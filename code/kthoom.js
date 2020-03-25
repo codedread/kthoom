@@ -692,8 +692,9 @@ class KthoomApp {
 
   showNextPage() {
     const turnedPage = this.bookViewer_.showNextPage();
-    if (this.bookViewer_.getFitMode() === FitMode.Width)
-        window.scrollTo(0,0); 
+    if (this.bookViewer_.getFitMode() === FitMode.Width) {
+      window.scrollTo(0,0);
+    }
     if (!turnedPage) {
       if (this.readingStack_.getNumberOfBooks() == 1) {
         this.bookViewer_.showPage(0);
