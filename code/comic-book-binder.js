@@ -96,7 +96,7 @@ export class ComicBookBinder extends BookBinder {
 
         if (foundError) {
           // TODO: Better error handling.
-          alert('Some pages had errors. See the console for more info.')
+          return a.getPageName().toLowerCase().length > b.getPageName().toLowerCase().length ||  a.getPageName().toLowerCase() > b.getPageName().toLowerCase() ? 1 : -1;
         }
 
         // Sort the book's pages based on filename.
