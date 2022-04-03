@@ -1,6 +1,6 @@
 import { Book } from '../book.js';
 import { BookMetadata, createComicBookXmlFromMetadata } from './book-metadata.js';
-import { Key, assert, getElem } from '../common/helpers.js';
+import { Key, Params, assert, getElem } from '../common/helpers.js';
 import { Zipper } from '../bitjs/archive/compress.js';
 import { config } from '../config.js';
 
@@ -19,7 +19,10 @@ const METADATA_STATUS_ID = 'metadataStatus';
 const REFRESH_TIMER_MS = 200;
 const STATUS_TIMER_MS = 5000;
 
+const COMICVINE_URL = 'https://us-central1-api-project-652854531961.cloudfunctions.net/function-proxy-request';
+
 /**
+ * A UI component that manages a table of cells to update metadata.
  */
 export class MetadataEditor {
   /**
@@ -53,16 +56,30 @@ export class MetadataEditor {
 
     getElem('addRowMetadataButton').addEventListener('click', evt => { this.doAddRow_(); })
     getElem('saveMetadataButton').addEventListener('click', evt => { this.doSave_(); });
+    getElem('searchMetadataButton').addEventListener('click', evt => { this.doSearch_(); });
 
     /**
      * @private
      * @type {number}
      */
     this.idleTimer_ = null;
+
+    /**
+     * @private
+     * @type {MetadataSearch}
+     */
+    this.searcher_ = null;
   }
 
   /** @returns {boolean} True if the editor is allowed to close. */
   doClose() {
+    if (this.searcher_) {
+      this.searcher_.doClose();
+      this.searcher_ = null;
+      this.rerender_();
+      return false;
+    }
+
     // If the metadata is edited, confirm the user wants to abandon changes before allowing closing.
     let allowClose = true;
     if (!this.editorMetadata_.equals(this.book_.getMetadata())) {
@@ -76,9 +93,7 @@ export class MetadataEditor {
         clearInterval(this.idleTimer_);
       }
       // Rendering the editor can show certain buttons, and we are closing, so hide them.
-      getElem('addRowMetadataButton').style.display = 'none';
-      getElem('saveMetadataButton').style.display = 'none';
-
+      this.hideEditorButtons_();
     }
     return allowClose;
   }
@@ -116,7 +131,12 @@ export class MetadataEditor {
    * @return {boolean} True if the event was handled.
    */
   handleKeyEvent(evt) {
+    if (this.searcher_) {
+      return this.searcher_.handleKeyEvent(evt);
+    }
+
     switch (evt.keyCode) {
+      case Key.Q: this.doSearch_(); break;
       case Key.R: this.doAddRow_(); break;
       case Key.S: this.doSave_(); break;
       case Key.T: this.doClose(); break;
@@ -228,6 +248,26 @@ export class MetadataEditor {
     setTimeout(() => statusEl.innerHTML = '', STATUS_TIMER_MS);
   }
 
+  async doSearch_() {
+    if (!Params['searchMetadata']) {
+      return;
+    }
+
+    import('./metadata-search.js').then(module => {
+      getElem('searchMetadataButton').style.display = 'none';
+      this.searcher_ = new module.MetadataSearch(this.book_);
+      this.searcher_.doOpen();
+      this.hideEditorButtons_();
+    });
+  }
+
+  /** @private */
+  hideEditorButtons_() {
+    getElem('addRowMetadataButton').style.display = 'none';
+    getElem('saveMetadataButton').style.display = 'none';
+    getElem('searchMetadataButton').style.display = 'none';
+  }
+
   /** @private */
   rerender_() {
     this.rows_ = [];
@@ -322,5 +362,6 @@ export class MetadataEditor {
     const currentKeys = this.rows_.map(row => row.select.dataset['key']);
     getElem('addRowMetadataButton').style.display =
         allowedKeys.length > currentKeys.length ? '' : 'none';
+    getElem('searchMetadataButton').style.display = Params['searchMetadata'] ? '' : 'none';
   }
 }

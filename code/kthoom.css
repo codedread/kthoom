@@ -453,8 +453,8 @@ button:focus {
 
 /** Metadata Viewer */
 #metadataViewer {
-  margin-left: calc(31em - 30px);
-  left: calc(100% - 31em - 5px);
+  margin-left: calc(41em - 30px);
+  left: calc(100% - 41em - 5px);
 }
 
 #metadataViewerButton {
@@ -464,7 +464,7 @@ button:focus {
 }
 
 #metadataTrayContents {
-  width: 30em;
+  width: 40em;
 }
 
 #metadataViewer.opened {
@@ -516,6 +516,24 @@ button:focus {
   border-color: yellow;
   color: yellow;
   cursor: pointer;
+}
+
+.metadataSearchResultsTable {
+  margin-top: 1em;
+  width: 95%;
+}
+
+.metadataSearchResultsTable th td {
+  border-bottom: solid 2px grey;
+}
+
+.metadataSearchResultsTable td {
+  color: yellow;
+}
+
+.metadataSearchResultsTable td span.match {
+  font-weight: bold;
+  text-decoration: underline;
 }
 
 /* TODO: Remove current class and use focus for reading stack. */

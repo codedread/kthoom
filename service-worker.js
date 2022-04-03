@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kthoom:v2';
+const CACHE_NAME = 'kthoom:v3';
 
 let urlsToCache = [
   '.',
@@ -21,6 +21,7 @@ let urlsToCache = [
   'code/common/dom-walker.js',
   'code/metadata/book-metadata.js',
   'code/metadata/metadata-editor.js',
+  'code/metadata/metadata-search.js',
   'code/metadata/metadata-viewer.js',
   'code/book-binder.js',
   'code/book-events.js',

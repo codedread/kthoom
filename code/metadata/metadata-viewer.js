@@ -1,6 +1,9 @@
 import { Book } from '../book.js';
-import { Key, Params, getElem } from '../common/helpers.js';
+import { Key, getElem } from '../common/helpers.js';
 
+/**
+ * A UI component that lets the user view the metadata of a book.
+ */
 export class MetadataViewer {
   constructor() {
     /**
