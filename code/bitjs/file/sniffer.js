@@ -38,58 +38,82 @@ const fileSignatures = {
 //   * an OGG container can be resolved to OGG Audio, OGG Video
 //   * an HEIF container can be resolved to AVIF, HEIC
 
+/**
+ * Represents a single byte in the tree. If this node terminates a known MIME type (see magic
+ * numbers above), then the mimeType field will be set.
+ */
 class Node {
-  /** @param {number} value */
+  /** @type {string} */
+  mimeType;
+
+  /** @type {Object<number, Node>} */
+  children = {};
+
+  /** @param {number} value The byte that this Node points at. */
   constructor(value) {
+    /** @type {number} */
     this.value = value;
-    this.children = {};
-    this.mimeType = undefined;
   }
 }
 
-// Top-level node in the tree.
-const root = new Node();
+/** Top-level node in the byte tree. */
+let root = null;
+/** The maximum depth of the byte tree. */
 let maxDepth = 0;
 
-// Construct the tree, erroring if overlapping mime types are possible.
-for (const mimeType in fileSignatures) {
-  for (const signature of fileSignatures[mimeType]) {
-    let curNode = root;
-    let depth = 0;
-    for (const byte of signature) {
-      if (curNode.children[byte] === undefined) {
-        if (byte === '??' && !curNode.children['??'] && Object.keys(curNode.children).length > 0) {
-          throw 'Cannot add a placeholder child to a node that has non-placeholder children';
-        } else if (byte !== '??' && curNode.children['??']) {
-          throw 'Cannot add a non-placeholder child to a node that has a placeholder child';
+/**
+ * This function initializes the byte tree. It is lazily called upon findMimeType(), but if you care
+ * about when the tree initializes (like in startup, etc), you can call it yourself here.
+ */
+export function initialize() {
+  root = new Node();
+
+  // Construct the tree, erroring if overlapping mime types are possible.
+  for (const mimeType in fileSignatures) {
+    for (const signature of fileSignatures[mimeType]) {
+      let curNode = root;
+      let depth = 0;
+      for (const byte of signature) {
+        if (curNode.children[byte] === undefined) {
+          if (byte === '??' && !curNode.children['??'] && Object.keys(curNode.children).length > 0) {
+            throw 'Cannot add a placeholder child to a node that has non-placeholder children';
+          } else if (byte !== '??' && curNode.children['??']) {
+            throw 'Cannot add a non-placeholder child to a node that has a placeholder child';
+          }
+          curNode.children[byte] = new Node(byte);
         }
-        curNode.children[byte] = new Node(byte);
+        depth++;
+        curNode = curNode.children[byte];
+      } // for each byte
+
+      if (maxDepth < depth) {
+        maxDepth = depth;
       }
-      depth++;
-      curNode = curNode.children[byte];
-    } // for each byte
 
-    if (maxDepth < depth) {
-      maxDepth = depth;
-    }
-
-    if (curNode.mimeType) {
-      throw `File signature collision:  ${curNode.mimeType} overlaps with ${mimeType}`;
-    } else if (Object.keys(curNode.children).length > 0) {
-      throw `${mimeType} signature is not unique, it collides with other mime types`;
-    }
-    curNode.mimeType = mimeType;
-  } // for each signature
+      if (curNode.mimeType) {
+        throw `File signature collision:  ${curNode.mimeType} overlaps with ${mimeType}`;
+      } else if (Object.keys(curNode.children).length > 0) {
+        throw `${mimeType} signature is not unique, it collides with other mime types`;
+      }
+      curNode.mimeType = mimeType;
+    } // for each signature
+  }
 }
 
 /**
+ * Finds the likely MIME type represented by the ArrayBuffer.
  * @param {ArrayBuffer} ab
- * @return {string} The MIME type of the buffer, or undefined.
+ * @returns {string} The MIME type of the buffer, or undefined.
  */
 export function findMimeType(ab) {
+  if (!root) {
+    initialize();
+  }
+
   const depth = ab.byteLength < maxDepth ? ab.byteLength : maxDepth;
   const arr = new Uint8Array(ab).subarray(0, depth);
   let curNode = root;
+  // Step through bytes, updating curNode as it walks down the byte tree.
   for (const byte of arr) {
     // If this node has a placeholder child, just step into it.
     if (curNode.children['??']) {

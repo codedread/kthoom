@@ -36,18 +36,18 @@ export {
  * @typedef UnarchivedFile
  * @property {string} filename
  * @property {Uint8Array} fileData
-*/
+ */
 
 /**
 * The goal is to make this testable - send getUnarchiver() an array buffer of
 * an archive, call start on the unarchiver, expect the returned result.
 *
 * Problem: It relies on Web Workers, and that won't work in a nodejs context.
-* Solution: Make decompress.js very thin, have it feed web-specific things into
+* Solution: Make archive.js very thin, have it feed web-specific things into
 *           an internal module that is isomorphic JavaScript.
 *
 * TODO:
-* - write unit tests for decompress-internal.js that use the nodejs Worker
+* - write unit tests for archive-internal.js that use the nodejs Worker
 *   equivalent.
 * - maybe use @pgriess/node-webworker or @audreyt/node-webworker-threads or
 *   just node's worker_threads ?
@@ -77,7 +77,7 @@ export class Untarrer extends UntarrerInternal {
 *     as Transferable and sent to a Worker thread once start() is called.
 * @param {Object|string} options An optional object of options, or a string
 *     representing where the path to the unarchiver script files.
-* @return {Unarchiver}
+* @returns {Unarchiver}
 */
 export function getUnarchiver(ab, options = {}) {
   return getUnarchiverInternal(ab, createWorkerFn, options);

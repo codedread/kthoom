@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kthoom:v3';
+const CACHE_NAME = 'kthoom:v4';
 
 let urlsToCache = [
   '.',
@@ -23,10 +23,17 @@ let urlsToCache = [
   'code/metadata/metadata-editor.js',
   'code/metadata/metadata-search.js',
   'code/metadata/metadata-viewer.js',
+  'code/pages/long-strip-page-setter.js',
+  'code/pages/one-page-setter.js',
+  'code/pages/page-container.js',
+  'code/pages/page-setter.js',
+  'code/pages/two-page-setter.js',
+  'code/pages/wide-strip-page-setter.js',
   'code/book-binder.js',
   'code/book-events.js',
   'code/book-pump.js',
   'code/book-viewer.js',
+  'code/book-viewer-types.js',
   'code/book.js',
   'code/comic-book-binder.js',
   'code/comic-book-page-sorter.js',

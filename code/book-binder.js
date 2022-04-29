@@ -37,6 +37,33 @@ try { EventTarget = window.EventTarget } catch(e) {}
  * emitting useful BookEvents (like progress, page extraction) to subscribers.
  */
 export class BookBinder extends EventTarget {
+  /** @type {number} */
+  #bytesLoaded;
+
+  /** @type {number} */
+  #totalExpectedSize;
+
+  /** @type {number} */
+  #startTime;
+
+  /** @type {UnarchiveState} */
+  #unarchiveState = UnarchiveState.UNARCHIVING_NOT_YET_STARTED;
+
+  /** 
+   * A number between 0 and 1 indicating the progress of the Unarchiver.
+   * @type {number}
+   */
+  #unarchivingPercentage = 0;
+
+  /** @type {Unarchiver} */
+  unarchiver;
+
+  /**
+   * A number between 0 and 1 indicating the progress of the page layout process.
+   * @type {number}
+   */
+  layoutPercentage = 0;
+
   /**
    * @param {string} fileNameOrUri
    * @param {ArrayBuffer} ab The ArrayBuffer to initialize the BookBinder.
@@ -59,40 +86,18 @@ export class BookBinder extends EventTarget {
     /** @protected {string} */
     this.name_ = fileNameOrUri;
 
-    /** @protected {number} */
-    this.startTime_ = undefined;
-
-    /** @private {number} */
-    this.bytesLoaded_ = ab.byteLength;
-
-    /** @private {number} */
-    this.totalExpectedSize_ = totalExpectedSize > 0 ? totalExpectedSize : this.bytesLoaded_;
-
-    /** 
-     * A number between 0 and 1 indicating the progress of the Unarchiver.
-     * @protected {number}
-     */
-    this.unarchivingPercentage_ = 0;
-
-    /** @private {UnarchiveState} */
-    this.unarchiveState_ = UnarchiveState.UNARCHIVING_NOT_YET_STARTED;
+    this.#bytesLoaded = ab.byteLength;
+    this.#totalExpectedSize = totalExpectedSize > 0 ? totalExpectedSize : this.#bytesLoaded;
 
     const unarchiverOptions = {
       'pathToBitJS': config.get('PATH_TO_BITJS'),
       'debug': (Params.debug === 'true'),
     };
 
-    /** @private {Unarchiver} */
-    this.unarchiver_ = getUnarchiver(ab, unarchiverOptions);
-    if (!this.unarchiver_) {
+    this.unarchiver = getUnarchiver(ab, unarchiverOptions);
+    if (!this.unarchiver) {
       throw 'Could not determine the unarchiver to use';
     }
-
-    /**
-     * A number between 0 and 1 indicating the progress of the page layout process.
-     * @protected {number}
-     */
-    this.layoutPercentage_ = 0;
   }
 
   /**
@@ -103,19 +108,19 @@ export class BookBinder extends EventTarget {
     if (!ab) {
       throw 'Must pass a valid ArrayBuffer to appendBytes()';
     }
-    if (!this.unarchiver_) {
+    if (!this.unarchiver) {
       throw 'Called appendBytes() without a valid Unarchiver set';
     }
-    if (this.bytesLoaded_ + ab.byteLength > this.totalExpectedSize_) {
+    if (this.#bytesLoaded + ab.byteLength > this.#totalExpectedSize) {
       throw 'Tried to add bytes larger than totalExpectedSize in appendBytes()';
     }
 
-    this.unarchiver_.update(ab);
-    this.bytesLoaded_ += ab.byteLength;
+    this.unarchiver.update(ab);
+    this.#bytesLoaded += ab.byteLength;
   }
 
   /**
-   * Oveerride this in an implementing subclass to do things before the Unarchiver starts
+   * Override this in an implementing subclass to do things before the Unarchiver starts
    * (like subscribe to Unarchiver events).
    * @abstract
    * @protected
@@ -141,22 +146,22 @@ export class BookBinder extends EventTarget {
     throw 'Cannot call getMIMEType() in abstract BookBinder';
   }
 
-  getLoadingPercentage() { return this.bytesLoaded_ / this.totalExpectedSize_; }
-  getUnarchivingPercentage() { return this.unarchivingPercentage_; }
-  getLayoutPercentage() { return this.layoutPercentage_; }
+  getLoadingPercentage() { return this.#bytesLoaded / this.#totalExpectedSize; }
+  getUnarchivingPercentage() { return this.#unarchivingPercentage; }
+  getLayoutPercentage() { return this.layoutPercentage; }
 
   setNewExpectedSize(bytesDownloaded, newExpectedSize) {
-    this.bytesLoaded_ = bytesDownloaded;
-    this.totalExpectedSize_ = newExpectedSize;
+    this.#bytesLoaded = bytesDownloaded;
+    this.#totalExpectedSize = newExpectedSize;
   }
 
   /** @protected */
   setUnarchiveComplete() {
-    this.unarchiveState_ = UnarchiveState.UNARCHIVED;
-    this.unarchivingPercentage_ = 1.0;
-    const diff = ((new Date).getTime() - this.startTime_) / 1000;
+    this.#unarchiveState = UnarchiveState.UNARCHIVED;
+    this.#unarchivingPercentage = 1.0;
+    const diff = ((new Date).getTime() - this.#startTime) / 1000;
     console.log(`Book = '${this.name_}'`);
-    console.log(`  using ${this.unarchiver_.getScriptFileName()}`);
+    console.log(`  using ${this.unarchiver.getScriptFileName()}`);
     console.log(`  unarchiving done in ${diff}s`);
   }
 
@@ -164,24 +169,23 @@ export class BookBinder extends EventTarget {
    * Starts the binding process.
    */
   start() {
-    if (!this.unarchiver_) {
+    if (!this.unarchiver) {
       throw 'Called start() without a valid Unarchiver';
     }
 
-    this.startTime_ = (new Date).getTime();
-
-    this.unarchiveState_ = UnarchiveState.UNARCHIVING;
-    this.unarchiver_.addEventListener(UnarchiveEventType.PROGRESS, evt => {
-      this.unarchivingPercentage_ = evt.totalCompressedBytesRead / this.totalExpectedSize_;
+    this.#startTime = (new Date).getTime();
+    this.#unarchiveState = UnarchiveState.UNARCHIVING;
+    this.unarchiver.addEventListener(UnarchiveEventType.PROGRESS, evt => {
+      this.#unarchivingPercentage = evt.totalCompressedBytesRead / this.#totalExpectedSize;
       // Total # pages is not always equal to the total # of files, so we do not report that here.
       this.dispatchEvent(new BookProgressEvent(this));
     });
 
-    this.unarchiver_.addEventListener(UnarchiveEventType.INFO,
+    this.unarchiver.addEventListener(UnarchiveEventType.INFO,
       evt => console.log(evt.msg));
 
     this.beforeStart_();
-    this.unarchiver_.start();
+    this.unarchiver.start();
   }
 
   /**
@@ -190,8 +194,8 @@ export class BookBinder extends EventTarget {
   stop() {
     // Stop the Unarchiver (which will kill the worker) and then delete the unarchiver
     // which should free up some memory, including the unarchived array buffer.
-    this.unarchiver_.stop();
-    this.unarchiver_ = null;
+    this.unarchiver.stop();
+    this.unarchiver = null;
   }
 }
 

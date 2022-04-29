@@ -239,7 +239,7 @@ export class UnarchiveExtractEvent extends UnarchiveEvent {
 
   /**
    * This method must be overridden by the subclass to return the script filename.
-   * @return {string} The MIME type of the archive.
+   * @returns {string} The MIME type of the archive.
    * @protected.
    */
   getMIMEType() {
@@ -248,7 +248,7 @@ export class UnarchiveExtractEvent extends UnarchiveEvent {
 
   /**
    * This method must be overridden by the subclass to return the script filename.
-   * @return {string} The script filename.
+   * @returns {string} The script filename.
    * @protected.
    */
   getScriptFileName() {
@@ -287,7 +287,7 @@ export class UnarchiveExtractEvent extends UnarchiveEvent {
   /**
    * Create an UnarchiveEvent out of the object sent back from the Worker.
    * @param {Object} obj
-   * @return {UnarchiveEvent}
+   * @returns {UnarchiveEvent}
    * @private
    */
   createUnarchiveEvent_(obj) {
@@ -437,7 +437,7 @@ export class UntarrerInternal extends Unarchiver {
  * @param {Function(string):Worker} createWorkerFn A function that creates a Worker from a script file.
  * @param {Object|string} options An optional object of options, or a string representing where
  *     the path to the unarchiver script files.
- * @return {Unarchiver}
+ * @returns {Unarchiver}
  */
  export function getUnarchiverInternal(ab, createWorkerFn, options = {}) {
   if (ab.byteLength < 10) {

@@ -9,7 +9,8 @@
 
 import { Book, BookContainer } from './book.js';
 import { BookEventType } from './book-events.js';
-import { BookViewer, FitMode } from './book-viewer.js';
+import { BookViewer } from './book-viewer.js';
+import { FitMode } from './book-viewer-types.js';
 import { Menu, MenuEventType } from './menu.js';
 import { ReadingStack } from './reading-stack.js';
 import { Key, Params, assert, getElem, serializeParamsToBrowser } from './common/helpers.js';
@@ -24,6 +25,7 @@ if (window.kthoom == undefined) {
 const LOCAL_STORAGE_KEY = 'kthoom_settings';
 const BOOK_VIEWER_ELEM_ID = 'bookViewer';
 const READING_STACK_ELEM_ID = 'readingStack';
+const HIDE_PANEL_BUTTONS_MENU_ITEM = 'menu-view-hide-panel-buttons';
 
 const PNG = 'image/png';
 const JPG = 'image/jpeg';
@@ -46,66 +48,36 @@ const enableOpenDirectory = !!window.showDirectoryPicker;
  * The main class for the kthoom reader.
  */
 export class KthoomApp {
+  /** @type {Menu} */
+  #viewerContextMenu = null;
+
   constructor() {
-    /**
-     * @private
-     * @type {BookViewer}
-     */
+    /** @private {BookViewer} */
     this.bookViewer_ = new BookViewer();
-    /**
-     * @private
-     * @type {ReadingStack}
-     */
+    /** @private {ReadingStack} */
     this.readingStack_ = new ReadingStack();
-    /**
-     * @private
-     * @type {MetadataViewer}
-     */
+    /** @private {MetadataViewer} */
     this.metadataViewer_ = new MetadataViewer();
 
     this.keysHeld_ = {};
 
-    /**
-     * @private
-     * @type {Book}
-     */
+    /** @private {Book} */
     this.currentBook_ = null;
 
-    /**
-     * @private
-     * @type {Menu}
-     */
+    /** @private {Menu}  */
     this.mainMenu_ = null;
 
-    /**
-     * @private
-     * @type {Menu}
-     */
+    /** @private {Menu} */
     this.openMenu_ = null;
 
-    /**
-     * @private
-     * @type {Menu}
-     */
+    /** @private {Menu} */
     this.viewMenu_ = null;
 
-    /**
-     * @private
-     * @type {Menu}
-     */
-    this.viewerContextMenu_ = null;
-
-    /**
-     * @private
-     * @type {boolean}
-     */
+    /** @private {boolean} */
     this.hasHelpOverlay_ = getElem('helpOverlay');
 
     // TODO: Remove this once all browsers support the File System Access API.
-    /**
-     * @private
-     * @type {HTMLInputElement}
-     */
+    /** @private {HTMLInputElement} */
     this.fileInputElem_ = null;
 
     // This Promise resolves when kthoom is ready.
@@ -175,7 +147,7 @@ export class KthoomApp {
     this.mainMenu_ = new Menu(getElem(MENU.MAIN));
     this.openMenu_ = new Menu(getElem(MENU.OPEN));
     this.viewMenu_ = new Menu(getElem(MENU.VIEW));
-    this.viewerContextMenu_ = new Menu(getElem(MENU.VIEWER_CONTEXT));
+    this.#viewerContextMenu = new Menu(getElem(MENU.VIEWER_CONTEXT));
 
     this.mainMenu_.addSubMenu('menu-open', this.openMenu_);
     this.mainMenu_.addSubMenu('menu-view', this.viewMenu_);
@@ -212,6 +184,8 @@ export class KthoomApp {
           this.bookViewer_.setNumPagesInViewer(1);
           this.viewMenu_.setMenuItemSelected('menu-view-one-page', true);
           this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
           this.saveSettings_();
           closeMainMenu();
           break;
@@ -219,7 +193,31 @@ export class KthoomApp {
           this.bookViewer_.setNumPagesInViewer(2);
           this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
           this.viewMenu_.setMenuItemSelected('menu-view-two-page', true);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
           this.saveSettings_();
+          closeMainMenu();
+          break;
+        case 'menu-view-long-strip':
+          this.bookViewer_.setNumPagesInViewer(3);
+          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', true);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+          this.saveSettings_();
+          closeMainMenu();
+          break;
+        case 'menu-view-wide-strip':
+          this.bookViewer_.setNumPagesInViewer(4);
+          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', true);
+          this.saveSettings_();
+          closeMainMenu();
+          break;
+        case HIDE_PANEL_BUTTONS_MENU_ITEM:
+          this.#togglePanelButtons();
           closeMainMenu();
           break;
         case 'menu-view-fit-best':
@@ -243,7 +241,7 @@ export class KthoomApp {
       switch (evt.item.id) {
         case 'menu-download': this.downloadBook_(); break;
         case 'menu-close-all': this.closeAll_(); break;
-        case 'menu-help': this.toggleHelpOpen_(); break;
+        case 'menu-help': this.#toggleHelpOpen(); break;
       }
     });
 
@@ -254,9 +252,9 @@ export class KthoomApp {
       this.fileInputElem_.addEventListener('change', (e) => this.loadLocalFiles_(e));
     }
 
-    getElem('main-menu-button').addEventListener('click', (e) => this.toggleMenuOpen_());
+    getElem('main-menu-button').addEventListener('click', (e) => this.#toggleMenuOpen());
 
-    this.viewerContextMenu_.addEventListener(MenuEventType.ITEM_SELECTED, evt => {
+    this.#viewerContextMenu.addEventListener(MenuEventType.ITEM_SELECTED, evt => {
       const pageNum = evt.item.dataset.pagenum;
       switch (evt.item.id) {
         case 'save-page-as-png': this.savePageAs_(pageNum, PNG); break;
@@ -266,8 +264,15 @@ export class KthoomApp {
     });
 
     // TODO: Does this mean the book viewer images have to be focusable for keyboard accessibility?
-    getElem('page1Image').addEventListener('contextmenu', evt => this.onContextMenu_(evt));
-    getElem('page2Image').addEventListener('contextmenu', evt => this.onContextMenu_(evt));
+    const observer = new MutationObserver((mutationRecords) => {
+      for (const record of mutationRecords) {
+        const newNodes = record.addedNodes;
+        for (const newNode of newNodes) {
+          newNode.addEventListener('contextmenu', evt => this.onContextMenu_(evt));
+        }
+      }
+    });
+    observer.observe(getElem('bvViewport'), { childList: true });
   }
 
   /** @private */
@@ -286,19 +291,30 @@ export class KthoomApp {
   initClickHandlers_() {
     // TODO: Move this click handler into BookViewer?
     const bookViewerElem = getElem(BOOK_VIEWER_ELEM_ID);
-    const firstPageElem = getElem('page1');
     bookViewerElem.addEventListener('click', (evt) => {
       if (this.readingStack_.isOpen()) {
-        this.toggleReadingStackOpen_();
+        this.#toggleReadingStackOpen();
+        return;
+      }
+      if (this.#viewerContextMenu.isOpen()) {
+        this.#viewerContextMenu.close();
         return;
       }
 
-      // Two-page viewer mode is simpler to figure out what the click means.
+      const numPageMode = this.bookViewer_.getNumPagesInViewer();
+      // Clicks do nothing in long-strip mode.
+      if (numPageMode === 3) {
+        return;
+      }
+
+      const bvViewport = getElem('bvViewport');
+      const firstPageElem = bvViewport.firstElementChild;
+
+      // Two-page viewer mode is simple to figure out what the click means.
       if (this.bookViewer_.getNumPagesInViewer() === 2) {
-        const targetId = evt.target.id;
-        if (targetId === 'page1Image' || targetId === 'page1Html') {
+        if (evt.target.parentElement === firstPageElem) {
           this.showPrevPage();
-        } else if (targetId === 'page2Image' || targetId === 'page2Html') {
+        } else if (evt.target.parentElement === firstPageElem.nextElementSibling) {
           this.showNextPage();
         }
         return;
@@ -328,7 +344,7 @@ export class KthoomApp {
         this.showNextPage();
       }
     });
-    getElem('helpOverlay').addEventListener('click', () => this.toggleHelpOpen_());
+    getElem('helpOverlay').addEventListener('click', () => this.#toggleHelpOpen());
   }
 
   /** @private */
@@ -341,7 +357,7 @@ export class KthoomApp {
     if (document.fullscreenEnabled) {
       const fsButton = getElem('fullScreen');
       fsButton.style.display = '';
-      fsButton.addEventListener('click', () => this.toggleFullscreen_());
+      fsButton.addEventListener('click', () => this.#toggleFullscreen());
       document.addEventListener('fullscreenchange', () => this.bookViewer_.updateLayout());
     }
   }
@@ -382,12 +398,11 @@ export class KthoomApp {
         }
         target = target.parentElement;
       }
-      evt.preventDefault();
     }, true);
   }
 
   /**
-   * @return {boolean}
+   * @returns {boolean}
    * @private
    */
   isHelpOpened_() {
@@ -437,10 +452,10 @@ export class KthoomApp {
     try {
       if (localStorage[LOCAL_STORAGE_KEY].length < 10) return;
       const s = JSON.parse(localStorage[LOCAL_STORAGE_KEY]);
-      this.bookViewer_.setRotateTimes(s.rotateTimes);
+      this.bookViewer_.setRotateTimes(s['rotateTimes']);
       // Obsolete settings:  hflip. vflip.
 
-      const fitMode = s.fitMode;
+      const fitMode = s['fitMode'];
       if (fitMode) {
         this.viewMenu_.setMenuItemSelected('menu-view-fit-best', fitMode === FitMode.Best);
         this.viewMenu_.setMenuItemSelected('menu-view-fit-height', fitMode === FitMode.Height);
@@ -448,22 +463,43 @@ export class KthoomApp {
 
         // We used to store the key code for the mode... check for stale settings.
         switch (fitMode) {
-          case Key.B: s.fitMode = FitMode.Best; break;
-          case Key.H: s.fitMode = FitMode.Height; break;
-          case Key.W: s.fitMode = FitMode.Width; break;
+          case Key.B: s['fitMode'] = FitMode.Best; break;
+          case Key.H: s['fitMode'] = FitMode.Height; break;
+          case Key.W: s['fitMode'] = FitMode.Width; break;
         }
-        this.bookViewer_.setFitMode(s.fitMode);
+        this.bookViewer_.setFitMode(s['fitMode']);
       }
 
-      if (s.numPagesInViewer) {
-        this.bookViewer_.setNumPagesInViewer(s.numPagesInViewer);
-        if (s.numPagesInViewer === 1) {
+      const numPagesInViewer = s['numPagesInViewer'];
+      if (numPagesInViewer) {
+        this.bookViewer_.setNumPagesInViewer(s['numPagesInViewer']);
+        const numPagesInViewer = s['numPagesInViewer'];
+        if (numPagesInViewer === 1) {
           this.viewMenu_.setMenuItemSelected('menu-view-one-page', true);
           this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
-        } else {
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+        } else if (numPagesInViewer === 2) {
           this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
           this.viewMenu_.setMenuItemSelected('menu-view-two-page', true);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+        } else if (numPagesInViewer === 3) {
+          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', true);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+        } else if (numPagesInViewer === 4) {
+          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', true);
         }
+      }
+
+      const hidePanelButtons = s['hidePanelButtons'];
+      if (hidePanelButtons !== undefined) {
+        this.#togglePanelButtons(hidePanelButtons);
       }
     } catch (err) { }
   }
@@ -479,7 +515,7 @@ export class KthoomApp {
 
     // If the overlay is shown, the only keystroke we handle is closing it.
     if (this.isHelpOpened_()) {
-      this.toggleHelpOpen_();
+      this.#toggleHelpOpen();
       return;
     }
 
@@ -506,7 +542,7 @@ export class KthoomApp {
       case Key.O: this.openLocalFiles_(); break;
       case Key.D: this.openLocalDirectory_(); break;
       case Key.U: this.openFileViaUrl_(); break;
-      case Key.F: this.toggleFullscreen_(); break;
+      case Key.F: this.#toggleFullscreen(); break;
       case Key.G:
         const menuItem = getElem(GOOGLE_MENU_ITEM_ID);
         if (menuItem && menuItem.getAttribute('disabled') !== 'true') {
@@ -516,7 +552,7 @@ export class KthoomApp {
       case Key.I: kthoom.ipfs.ipfsHashWindow(); break;
       case Key.QUESTION_MARK:
         if (this.hasHelpOverlay_) {
-          this.toggleHelpOpen_();
+          this.#toggleHelpOpen();
         }
         break;
       case Key.M:
@@ -526,7 +562,7 @@ export class KthoomApp {
         break;
       case Key.ESCAPE:
         if (isReadingStackOpen) {
-          this.toggleReadingStackOpen_();
+          this.#toggleReadingStackOpen();
           isReadingStackOpen = false;
         }
         break;
@@ -545,26 +581,30 @@ export class KthoomApp {
       case Key.S:
         // Only open the reading stack if the menu or metadata viewer are not open.
         if (!isMenuOpen && !isMetadataViewerOpen) {
-          this.toggleReadingStackOpen_();
+          this.#toggleReadingStackOpen();
           return;
         }
         break;
       case Key.T:
         // Only open the metadata if the menu or reading stack are not open.
         if (this.currentBook_ && !isMenuOpen && !isReadingStackOpen) {
-          this.toggleMetadataViewerOpen_();
+          this.#toggleMetadataViewerOpen();
           return;
         }
+        break;
+      case Key.P:
+        this.#togglePanelButtons();
+        break;
     }
 
     // All other key strokes below this are only valid if the menu and trays are closed.
     if (isReadingStackOpen) {
-      this.toggleReadingStackOpen_();
+      this.#toggleReadingStackOpen();
       return;
     }
 
     if (isMetadataViewerOpen) {
-      this.toggleMetadataViewerOpen_();
+      this.#toggleMetadataViewerOpen();
       return;
     }
 
@@ -572,37 +612,24 @@ export class KthoomApp {
 
     if (getComputedStyle(getElem('progress')).display == 'none') return;
 
-    let canKeyNext = ((document.body.offsetWidth + document.body.scrollLeft) / document.body.scrollWidth) >= 1;
-    let canKeyPrev = (window.scrollX <= 0);
-
     switch (code) {
       case Key.LEFT:
-        if (canKeyPrev) {
-          if (evt.shiftKey) {
-            this.bookViewer_.showPage(0);
-          } else {
-            this.showPrevPage();
-          }
+        evt.preventDefault();
+        evt.stopPropagation();
+        if (evt.shiftKey) {
+          this.bookViewer_.showPage(0);
+        } else {
+          this.showPrevPage();
         }
         break;
       case Key.RIGHT:
-        if (canKeyNext) {
-          if (evt.shiftKey) {
-            this.bookViewer_.showPage(this.currentBook_.getNumberOfPages() - 1);
-          } else {
-            this.showNextPage();
-          }
+        evt.preventDefault();
+        evt.stopPropagation();
+        if (evt.shiftKey) {
+          this.bookViewer_.showPage(this.currentBook_.getNumberOfPages() - 1);
+        } else {
+          this.showNextPage();
         }
-        break;
-      case Key.UP:
-        evt.preventDefault();
-        evt.stopPropagation();
-        window.scrollBy(0, -5);
-        break;
-      case Key.DOWN:
-        evt.preventDefault();
-        evt.stopPropagation();
-        window.scrollBy(0, 5);
         break;
       case Key.LEFT_SQUARE_BRACKET:
         this.readingStack_.changeToPrevBook();
@@ -629,15 +656,29 @@ export class KthoomApp {
         this.viewMenu_.setMenuItemSelected('menu-view-fit-width', fitMode === FitMode.Width);
         this.saveSettings_();
         break;
-      case Key.NUM_1: case Key.NUM_2:
+      case Key.NUM_1: case Key.NUM_2: case Key.NUM_3: case Key.NUM_4:
         const numPages = code - Key.NUM_1 + 1;
         this.bookViewer_.setNumPagesInViewer(numPages);
         if (numPages === 1) {
           this.viewMenu_.setMenuItemSelected('menu-view-one-page', true);
           this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
-        } else {
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+        } else if (numPages === 2) {
           this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
           this.viewMenu_.setMenuItemSelected('menu-view-two-page', true);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+        } else if (numPages === 3) {
+          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', true);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+        } else {
+          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', true);
         }
         this.saveSettings_();
         break;
@@ -655,10 +696,11 @@ export class KthoomApp {
     if (!this.currentBook_) { return; }
 
     evt.preventDefault();
+
     const pageNum = parseInt(evt.target.parentElement.dataset.pagenum, 10);
     const thisPage = this.currentBook_.getPage(pageNum);
     const mimeType = thisPage.getMimeType();
-    const menu = this.viewerContextMenu_;
+    const menu = this.#viewerContextMenu;
     menu.showMenuItem('save-page-as-png', [PNG, WEBP].includes(mimeType));
     menu.showMenuItem('save-page-as-jpg', [JPG, WEBP].includes(mimeType));
     menu.showMenuItem('save-page-as-webp', [WEBP].includes(mimeType));
@@ -712,9 +754,10 @@ export class KthoomApp {
   /** @private */
   saveSettings_() {
     localStorage[LOCAL_STORAGE_KEY] = JSON.stringify({
-      rotateTimes: this.bookViewer_.getRotateTimes(),
-      fitMode: this.bookViewer_.getFitMode(),
-      numPagesInViewer: this.bookViewer_.getNumPagesInViewer(),
+      'rotateTimes': this.bookViewer_.getRotateTimes(),
+      'fitMode': this.bookViewer_.getFitMode(),
+      'numPagesInViewer': this.bookViewer_.getNumPagesInViewer(),
+      'hidePanelButtons': this.viewMenu_.getMenuItemSelected(HIDE_PANEL_BUTTONS_MENU_ITEM),
     });
   }
 
@@ -745,52 +788,12 @@ export class KthoomApp {
     });
   }
 
-  /** @private */
-  toggleFullscreen_() {
-    if (document.fullscreenEnabled) {
-      const fsPromise = document.fullscreenElement ?
-        document.exitFullscreen() :
-        document.documentElement.requestFullscreen();
-      fsPromise
-          .then(() => this.bookViewer_.updateLayout())
-          .catch(err => {
-            debugger;
-          })
-
-    }
-  }
-
-  /** @private */
-  toggleHelpOpen_() {
-    if (this.hasHelpOverlay_) {
-      getElem('helpOverlay').classList.toggle('opened');
-    }
-  }
-
-  /** @private */
-  toggleMenuOpen_() {
-    if (!this.mainMenu_.isOpen()) {
-      getElem('main-menu-button').setAttribute('aria-expanded', 'true');
-      this.mainMenu_.open();
-    } else {
-      getElem('main-menu-button').setAttribute('aria-expanded', 'false');
-      this.mainMenu_.close();
-    }
-  }
-
-  /** @private */
-  toggleMetadataViewerOpen_() {
-    this.metadataViewer_.toggleOpen();
-  }
-
-  /** @private */
-  toggleReadingStackOpen_() {
-    this.readingStack_.toggleOpen();
-  }
-
   showPrevPage() {
     const turnedPage = this.bookViewer_.showPrevPage();
-    if (this.bookViewer_.getFitMode() === FitMode.Width) {
+    // TODO(long-strip): Move this into BookViewer.updateLayout() ?
+    // Only place at top if the viewer is not in long-strip mode.
+    if (this.bookViewer_.getFitMode() === FitMode.Width &&
+        this.bookViewer_.getNumPagesInViewer() < 3) {
       window.scrollTo(0, 0);
     }
     if (!turnedPage) {
@@ -806,7 +809,10 @@ export class KthoomApp {
 
   showNextPage() {
     const turnedPage = this.bookViewer_.showNextPage();
-    if (this.bookViewer_.getFitMode() === FitMode.Width) {
+    // TODO(long-strip): Move this into BookViewer.updateLayout() ?
+    // Only place at top if the viewer is not in long-strip mode.
+    if (this.bookViewer_.getFitMode() === FitMode.Width &&
+        this.bookViewer_.getNumPagesInViewer() < 3) {
       window.scrollTo(0, 0);
     }
     if (!turnedPage) {
@@ -824,7 +830,7 @@ export class KthoomApp {
    * Finds a more readable display name for a book from a JSON Reading List.
    * TODO: Move this to a separate module for processing JSON Reading Lists?
    * @param {Object} item An item object from the JSON Reading List format.
-   * @return {string}
+   * @returns {string}
    */
   getNameForBook_(item) {
     return item.name || item.uri.split('/').pop() || item.uri;
@@ -1030,7 +1036,7 @@ export class KthoomApp {
    * @param {number} expectedSize Unarchived size in bytes.  If -1, then the
    *     data from the XHR progress events is used.
    * @param {Object<string, string>} headerMap A map of request header keys and values.
-   * @return {Promise<Book>}
+   * @returns {Promise<Book>}
    */
   loadSingleBookFromXHR(name, uri, expectedSize, headerMap = {}) {
     const book = new Book(name, uri);
@@ -1044,7 +1050,7 @@ export class KthoomApp {
    * @param {string} uri The resource to fetch.
    * @param {number} expectedSize Unarchived size in bytes.
    * @param {Object} init An object to initialize the Fetch API.
-   * @return {Promise<Book>}
+   * @returns {Promise<Book>}
    */
   loadSingleBookFromFetch(name, uri, expectedSize, init) {
     if (!window['fetch'] || !window['Response'] || !window['ReadableStream']) {
@@ -1061,7 +1067,7 @@ export class KthoomApp {
    * @param {string} name
    * @param {string} bookUri
    * @param {ArrayBuffer} ab
-   * @return {Promise<Book>}
+   * @returns {Promise<Book>}
    */
   loadSingleBookFromArrayBuffer(name, bookUri, ab) {
     const book = new Book(name);
@@ -1074,7 +1080,7 @@ export class KthoomApp {
    * @param {string} name
    * @param {string} bookUri
    * @param {BookPump} bookPump
-   * @return {Promise<Book>}
+   * @returns {Promise<Book>}
    */
   loadSingleBookFromBookPump(name, bookUri, bookPump) {
     const book = new Book(name);
@@ -1097,7 +1103,7 @@ export class KthoomApp {
    * TODO: Move this to a separate module for processing JSON Reading Lists?
    * @param {Blob|File} jsonBlob The JSON blob/file.
    * @param {string=} readingListUri Optional URI of the reading list file.
-   * @return {Promise<Array<Object>>} Returns a Promise that will resolve with an array of item
+   * @returns {Promise<Array<Object>>} Returns a Promise that will resolve with an array of item
    *     objects (see format above), or rejects with an error string.
    * @private
    */
@@ -1234,5 +1240,59 @@ export class KthoomApp {
 
     // Enable menu items that are relevant when a book is switched to.
     this.mainMenu_.showMenuItem('menu-close-all', true);
+  }
+
+  #toggleFullscreen() {
+    if (document.fullscreenEnabled) {
+      const fsPromise = document.fullscreenElement ?
+        document.exitFullscreen() :
+        document.documentElement.requestFullscreen();
+      fsPromise
+          .then(() => this.bookViewer_.updateLayout())
+          .catch(err => {
+            debugger;
+          })
+
+    }
+  }
+
+  #toggleHelpOpen() {
+    if (this.hasHelpOverlay_) {
+      getElem('helpOverlay').classList.toggle('opened');
+    }
+  }
+
+  #toggleMenuOpen() {
+    if (!this.mainMenu_.isOpen()) {
+      getElem('main-menu-button').setAttribute('aria-expanded', 'true');
+      this.mainMenu_.open();
+    } else {
+      getElem('main-menu-button').setAttribute('aria-expanded', 'false');
+      this.mainMenu_.close();
+    }
+  }
+
+  #toggleMetadataViewerOpen() {
+    this.metadataViewer_.toggleOpen();
+  }
+
+  /**
+   * Toggles whether panel buttons are visible and updates settings.
+   * @param {boolean=} force Use this to force panel buttons and UI into a state. This is used when
+   *     loading in settings from storage.
+   */
+   #togglePanelButtons(force) {
+    let hide = !this.viewMenu_.getMenuItemSelected(HIDE_PANEL_BUTTONS_MENU_ITEM);
+    if (force !== undefined) {
+      hide = force;
+    }
+    this.readingStack_.showButton(!hide);
+    this.metadataViewer_.showButton(!hide);
+    this.viewMenu_.setMenuItemSelected(HIDE_PANEL_BUTTONS_MENU_ITEM, hide);
+    this.saveSettings_();
+  }
+
+  #toggleReadingStackOpen() {
+    this.readingStack_.toggleOpen();
   }
 }

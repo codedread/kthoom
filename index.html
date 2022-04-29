@@ -99,16 +99,13 @@
     </div> <!-- header -->
     <div id="bookViewer">
       <svg id="pages" style="display:none">
-        <g id="bvViewport">
-          <g id="page1">
-            <image id="page1Image"></image>
-            <foreignObject id="page1Html"></foreignObject>
+        <defs>
+          <g id="pageTemplate">
+            <image></image>
+            <foreignObject></foreignObject>
           </g>
-          <g id="page2">
-            <image id="page2Image"></image>
-            <foreignObject id="page2Html"></foreignObject>
-          </g>
-        </g>
+        </defs>
+        <g id="bvViewport"></g>
       </svg>
     </div> <!-- bookViewer -->
     <div id="readingStackOverlay" class="fullScreenOverlay hidden"></div>
@@ -199,11 +196,14 @@
           <dt>B</dt>
           <dd>Best fit mode</dd>
 
-          <dt>1 <span class="separator">/</span> 2</dt>
-          <dd>1-page view / 2-page view</dd>
+          <dt>1 <span class="separator">/</span> 2 <span class="separator">/</span> 3 <span class="separator">/</span> 4</dt>
+          <dd>1-page / 2-page / Long-strip / Wide-strip</dd>
 
           <dt>F</dt>
           <dd>Toggle Fullscreen Mode (if available)</dd>
+
+          <dt>P</dt>
+          <dd>Hide metadata viewer and reading stack panel buttons</dd>
         </dl>
       </section>
       <section class="helpSection">
@@ -233,19 +233,20 @@
     <ul id="mainMenuItems" class="menuItems" role="menu" aria-label="Main Menu">
       <li role="none">
         <button id="menu-open" class="menuItem" role="menuitem" tabindex="-1" aria-expanded="false">
-          Open<span class="subMenuArrow">&#x25B6;</span>
+          <span class="menuItemText">Open</span>
+          <span class="subMenuArrow">&#x25B6;</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-download" style="display:none" disabled="true" class="menuItem"
                 role="menuitem" tabindex="-1" aria-expanded="false">
-          Download a copy
+          <span class="menuItemText">Download a copy</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-close-all" style="display:none" disabled="true" class="menuItem"
                 role="menuitem" tabindex="-1">
-          Close All
+          <span class="menuItemText">Close All</span>
         </button>
       </li>
       <li role="none">
@@ -253,7 +254,8 @@
       </li>
       <li role="none">
         <button id="menu-view" class="menuItem" role="menuitem" tabindex="-1" aria-expanded="false">
-          View<span class="subMenuArrow">&#x25B6;</span>
+          <span class="menuItemText">View</span>
+          <span class="subMenuArrow">&#x25B6;</span>
         </button>
       </li>
       <li role="none">
@@ -261,7 +263,8 @@
       </li>
       <li role="none">
         <button id="menu-help" class="menuItem" role="menuitem" tabindex="-1">
-          Help (Keyboard Shortcuts)<span class="menuItemKey">?</span>
+          <span class="menuItemText">Help (Keyboard Shortcuts)</span>
+          <span class="menuItemKey">?</span>
         </button>
       </li>
     </ul>
@@ -271,30 +274,35 @@
     <ul id="openMenuItems" class="menuItems" role="menu" aria-label="Open Menu">
       <li role="none">
         <button id="menu-open-local-files" class="menuItem" role="menuitem" tabindex="-1">
-          Open Files<span class="menuItemKey">O</span>
+          <span class="menuItemText">Open Files</span>
+          <span class="menuItemKey">O</span>
         </button>
         <!-- TODO: Remove this once all browsers support the File System Access API. -->
         <input id="menu-open-local-files-input" type="file" multiple tabindex="-1">
       </li>
       <li role="none">
         <button id="menu-open-directory" class="menuItem hideEnableDirectoryElem" role="menuitem" tabindex="-1">
-          Open Directory<span class="menuItemKey">D</span>
+          <span class="menuItemText">Open Directory</span>
+          <span class="menuItemKey">D</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-open-url" class="menuItem" role="menuitem" tabindex="-1">
-          Open from URL<span class="menuItemKey">U</span>
+          <span class="menuItemText">Open from URL</span>
+          <span class="menuItemKey">U</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-open-google-drive" style="display:none" disabled="true" class="menuItem"
                 role="menuitem" tabindex="-1">
-          Open from Google Drive<span class="menuItemKey">G</span>
+          <span class="menuItemText">Open from Google Drive</span>
+          <span class="menuItemKey">G</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-open-ipfs-hash" class="menuItem" role="menuitem" tabindex="-1">
-          Open from IPFS<span class="menuItemKey">I</span>
+          <span class="menuItemText">Open from IPFS</span>
+          <span class="menuItemKey">I</span>
         </button>
       </li>
     </ul>
@@ -304,12 +312,14 @@
     <ul id="viewMenuItems" class="menuItems" role="menu" aria-label="View Menu">
       <li role="none">
         <button id="menu-view-rotate-right" class="menuItem" role="menuitem" tabindex="-1">
-          Rotate Right<span class="menuItemKey">R</span>
+          <span class="menuItemText">Rotate Right</span>
+          <span class="menuItemKey">R</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-view-rotate-left" class="menuItem" role="menuitem" tabindex="-1">
-          Rotate Left<span class="menuItemKey">L</span>
+          <span class="menuItemText">Rotate Left</span>
+          <span class="menuItemKey">L</span>
         </button>
       </li>
       <li role="none">
@@ -318,12 +328,30 @@
       <!-- TODO: Proper a11y for which item is selected -->
       <li role="none">
         <button id="menu-view-one-page" class="menuItem" role="menuitem" tabindex="-1">
-          <span class="menuCheckmark"></span>1-page viewer<span class="menuItemKey">1</span>
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">1-page viewer</span>
+          <span class="menuItemKey">1</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-view-two-page" class="menuItem" role="menuitem" tabindex="-1">
-          <span class="menuCheckmark"></span>2-page viewer<span class="menuItemKey">2</span>
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">2-page viewer</span>
+          <span class="menuItemKey">2</span>
+        </button>
+      </li>
+      <li role="none">
+        <button id="menu-view-long-strip" class="menuItem" role="menuitem" tabindex="-1">
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">Long Strip</span>
+          <span class="menuItemKey">3</span>
+        </button>
+      </li>
+      <li role="none">
+        <button id="menu-view-wide-strip" class="menuItem" role="menuitem" tabindex="-1">
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">Wide Strip</span>
+          <span class="menuItemKey">4</span>
         </button>
       </li>
       <li role="none">
@@ -331,17 +359,33 @@
       </li>
       <li role="none">
         <button id="menu-view-fit-best" class="menuItem" role="menuitem" tabindex="-1">
-          <span class="menuCheckmark"></span>Best Fit<span class="menuItemKey">B</span>
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">Best Fit</span>
+          <span class="menuItemKey">B</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-view-fit-height" class="menuItem" role="menuitem" tabindex="-1">
-          <span class="menuCheckmark"></span>Fit to Height<span class="menuItemKey">H</span>
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">Fit to Height</span>
+          <span class="menuItemKey">H</span>
         </button>
       </li>
       <li role="none">
         <button id="menu-view-fit-width" class="menuItem" role="menuitem" tabindex="-1">
-          <span class="menuCheckmark"></span>Fit to Width<span class="menuItemKey">W</span>
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">Fit to Width</span>
+          <span class="menuItemKey">W</span>
+        </button>
+      </li>
+      <li role="none">
+        <hr class="menuSeparator" />
+      </li>
+      <li role="none">
+        <button id="menu-view-hide-panel-buttons" class="menuItem" role="menuitem" tabindex="-1">
+          <span class="menuCheckmark"></span>
+          <span class="menuItemText">Hide panel buttons</span>
+          <span class="menuItemKey">P</span>
         </button>
       </li>
     </ul>
@@ -351,17 +395,17 @@
     <ul id="viewerContextMenuItems" class="menuItems" role="menu" aria-label="Viewer Context Menu">
       <li role="none">
         <button id="save-page-as-png" class="menuItem" role="menuitem" tabindex="-1">
-          Save page as PNG
+          <span class="menuItemText">Save page as PNG</span>
         </button>
       </li>
       <li role="none">
         <button id="save-page-as-jpg" class="menuItem" role="menuitem" tabindex="-1">
-          Save page as JPG
+          <span class="menuItemText">Save page as JPG</span>
         </button>
       </li>
       <li role="none">
         <button id="save-page-as-webp" class="menuItem" role="menuitem" tabindex="-1">
-          Save page as WebP
+          <span class="menuItemText">Save page as WebP</span>
         </button>
       </li>
     </ul>

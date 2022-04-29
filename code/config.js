@@ -14,7 +14,7 @@ class ConfigService {
 
   /**
    * @param {String} key 
-   * @return {*} A copy of the value at that key.
+   * @returns {*} A copy of the value at that key.
    */
   get(key) {
     if (!locked) throw 'Config was not locked.  Did you forget to call lock()?';
@@ -27,7 +27,7 @@ class ConfigService {
    * @param {String} key
    * @param {*} val Any value that can be properly serialized to JSON.  This value is round-tripped
    *     through JSON.parse(JSON.stringify(val)) before stored.  Do not attempt to store code.
-   * @return {ConfigService} Returns this for chaining.
+   * @returns {ConfigService} Returns this for chaining.
    */
   set(key, val) {
     if (locked) throw 'Config was already locked.  Cannot set more values.';

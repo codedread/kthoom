@@ -1,5 +1,9 @@
 /**
- * 
+ * webp-shim.js
+ *
+ * Licensed under the MIT License
+ *
+ * Copyright(c) 2020 Google Inc.
  */
 
 const url = import.meta.url;
@@ -12,7 +16,7 @@ let loadingPromise = undefined;
 let api = undefined;
 
 /**
- * @return {Promise<Object>} Returns the API object.
+ * @returns {Promise<Object>} Returns the API object.
  */
 function loadWebPShimApi() {
   if (api) { return Promise.resolve(api); }

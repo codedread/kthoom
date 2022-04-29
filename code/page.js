@@ -8,13 +8,15 @@
 
 import { convertWebPtoJPG } from './bitjs/image/webp-shim/webp-shim.js';
 import { findMimeType } from './bitjs/file/sniffer.js';
+import { PageContainer } from './pages/page-container.js';
 
+// This is from Googling, I've seen different numbers.
 const DEFAULT_ASPECT_RATIO = 6.625 / 10.25;
 
 /**
  * @param {Uint8Array} typedArray
  * @param {string} mimeType
- * @return {string} A URL representing the ArrayBuffer.
+ * @returns {string} A URL representing the ArrayBuffer.
  */
 function createURLFromArray(typedArray, mimeType) {
   if (mimeType === 'image/xml+svg') {
@@ -72,6 +74,15 @@ export class Page {
   getLastModTime() { return this.pageLastModTime_; }
 
   /**
+   * Renders this page into the page container.
+   * @param {PageContainer} pageContainer
+   * @param {number} pageNum
+   */
+  renderIntoContainer(pageContainer, pageNum) {
+    throw 'Cannot render an abstract Page object into a Pagecontainer, use a subclass.';
+  }
+
+  /**
    * Renders this page into the page viewer.
    * @param {SVGImageElement} imageEl
    * @param {SVGForeignObjectElement} objEl
@@ -82,7 +93,9 @@ export class Page {
 }
 
 /**
- * A page that holds a single image.
+ * A page that holds a single image. ImagePages are different than other types of pages because
+ * the aspect ratio is fully driven by the contents (the image) and can change with each page
+ * in a book.
  */
 export class ImagePage extends Page {
   /**
@@ -107,7 +120,17 @@ export class ImagePage extends Page {
   }
 
   /**
+   * Renders this page into the page container.
+   * @param {PageContainer} pageContainer
+   * @param {number} pageNum
+   */
+  renderIntoContainer(pageContainer, pageNum) {
+    pageContainer.renderRasterImage(this.getURI(), pageNum);
+  }
+
+  /**
    * Renders this page into the page viewer.
+   * TODO: Remove this.
    * @param {SVGImageElement} imgEl
    * @param {SVGForeignObjectElement} objEl
    */
@@ -167,7 +190,26 @@ export class WebPShimImagePage extends Page {
   isInflated() { return !!this.dataURI_; }
 
   /**
+   * Renders this page into the page container.
+   * @param {PageContainer} pageContainer
+   * @param {number} pageNum
+   */
+  renderIntoContainer(pageContainer, pageNum) {
+    if (!this.isInflated()) {
+      this.inflate().then(dataURI => {
+        this.dataURI_ = dataURI;
+        this.inflatingPromise_ = null;
+        this.renderIntoContainer(pageContainer, pageNum);
+      });
+      return;
+    }
+
+    pageContainer.renderRasterImage(this.dataURI_, pageNum);
+  }
+
+  /**
    * Renders this page into the page viewer.
+   * TODO: Remove this.
    * @param {SVGImageElement} imgEl
    * @param {SVGForeignObjectElement} objEl
    */
@@ -205,7 +247,19 @@ export class TextPage extends Page {
   }
 
   /**
+   * Renders this page into the page container.
+   * @param {PageContainer} pageContainer
+   * @param {number} pageNum
+   */
+  renderIntoContainer(pageContainer, pageNum) {
+    const textDiv = document.createElement('div');
+    textDiv.innerHTML = `<pre>${this.rawText_}</pre>`;
+    pageContainer.renderHtml(textDiv, pageNum);
+  }
+
+  /**
    * Renders this page into the page viewer.
+   * TODO: Remove this.
    * @param {SVGImageElement} imageEl
    * @param {SVGForeignObjectElement} objEl
    */
@@ -244,7 +298,17 @@ export class XhtmlPage extends Page {
   }
 
   /**
+   * Renders this page into the page container.
+   * @param {PageContainer} pageContainer
+   */
+  renderIntoContainer(pageContainer) {
+    pageContainer.renderHtml(this.iframeEl_);
+    this.inflaterFn_(this.iframeEl_);
+  }
+
+  /**
    * Renders this page into the page viewer.
+   * TODO: Remove this.
    * @param {SVGImageElement} imageEl
    * @param {SVGForeignObjectElement} objEl
    */
@@ -262,7 +326,7 @@ export class XhtmlPage extends Page {
 /**
  * TODO: Add something to bitjs.image to sniff the bytes of an image file and get its MIME type?
  * @param {string} filename
- * @return {string|undefined} The MIME type or undefined if we could not guess it.
+ * @returns {string|undefined} The MIME type or undefined if we could not guess it.
  */
 export function guessMimeType(filename) {
   const fileExtension = filename.split('.').pop().toLowerCase();
@@ -320,7 +384,7 @@ function dosDateTimeToJSDate(dosDate, dosTime) {
 /**
  * Factory method that creates a Page from a File.
  * @param {UnarchivedFile} unarchivedFile
- * @return {Promise<Page>} A Promise that resolves to a Page (like an ImagePage).
+ * @returns {Promise<Page>} A Promise that resolves to a Page (like an ImagePage).
  */
 export const createPageFromFileAsync = function (unarchivedFile) {
   return new Promise((resolve, reject) => {

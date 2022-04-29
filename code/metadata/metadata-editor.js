@@ -128,7 +128,7 @@ export class MetadataEditor {
 
   /**
    * @param {KeyboardEvent} evt
-   * @return {boolean} True if the event was handled.
+   * @returns {boolean} True if the event was handled.
    */
   handleKeyEvent(evt) {
     if (this.searcher_) {

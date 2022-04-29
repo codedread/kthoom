@@ -5,7 +5,7 @@
  *
  * Copyright(c) 2018 Google Inc.
  */
-import { getElem } from './common/helpers.js';
+import { getElem, Params } from './common/helpers.js';
 import { Book, BookContainer } from './book.js';
 import { BookEventType } from './book-events.js';
 
@@ -158,6 +158,11 @@ export class ReadingStack {
         this.renderStack_();
       }
     }
+  }
+
+  /** @param {boolean} show */
+  showButton(show) {
+    getElem('readingStackButton').classList.toggle('hidden', !show);
   }
 
   whenCurrentBookChanged(callback) {

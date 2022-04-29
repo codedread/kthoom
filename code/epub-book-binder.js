@@ -76,7 +76,7 @@ export class EPUBBookBinder extends BookBinder {
   /** @override */
   beforeStart_() {
     let firstFile = true;
-    this.unarchiver_.addEventListener(UnarchiveEventType.EXTRACT, evt => {
+    this.unarchiver.addEventListener(UnarchiveEventType.EXTRACT, evt => {
       const theFile = evt.unarchivedFile;
       this.fileMap_.set(theFile.filename, theFile.fileData);
 
@@ -86,7 +86,7 @@ export class EPUBBookBinder extends BookBinder {
         this.validateMimetype_(theFile);
       }
     });
-    this.unarchiver_.addEventListener(UnarchiveEventType.FINISH, evt => {
+    this.unarchiver.addEventListener(UnarchiveEventType.FINISH, evt => {
       this.setUnarchiveComplete();
 
       this.parseContainer_();
@@ -108,7 +108,7 @@ export class EPUBBookBinder extends BookBinder {
   /**
    * @param {string} href
    * @param {string} rootDir
-   * @return {FileRef}
+   * @returns {FileRef}
    * @private
    */
   getManifestFileRef_(href, rootDir) {
@@ -133,7 +133,7 @@ export class EPUBBookBinder extends BookBinder {
         const htmlDoc = new DOMParser().parseFromString(toText(data), XHTML_MIMETYPE);
         xhtmlChunks.push(htmlDoc);
       }
-      this.layoutPercentage_ = (i + 1) / numSpineRefs;
+      this.layoutPercentage = (i + 1) / numSpineRefs;
       this.dispatchEvent(new BookProgressEvent(this, 1));
     }
 

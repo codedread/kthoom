@@ -40,7 +40,7 @@ export class ComicBookBinder extends BookBinder {
   /** @override */
   beforeStart_() {
     let prevExtractPromise = Promise.resolve(true);
-    this.unarchiver_.addEventListener(UnarchiveEventType.EXTRACT, evt => {
+    this.unarchiver.addEventListener(UnarchiveEventType.EXTRACT, evt => {
       // Convert each unarchived file into a Page.
       // TODO: Error if not present?
       if (evt.unarchivedFile) {
@@ -80,7 +80,7 @@ export class ComicBookBinder extends BookBinder {
         this.dispatchEvent(new BookProgressEvent(this, this.pagePromises_.length));
       }
     });
-    this.unarchiver_.addEventListener(UnarchiveEventType.FINISH, evt => {
+    this.unarchiver.addEventListener(UnarchiveEventType.FINISH, evt => {
       this.setUnarchiveComplete();
 
       if (evt.metadata.comment && Params.metadata) {
@@ -126,7 +126,7 @@ export class ComicBookBinder extends BookBinder {
       this.stop();
     });
 
-    switch (this.unarchiver_.getMIMEType()) {
+    switch (this.unarchiver.getMIMEType()) {
       case 'application/zip':
         this.mimeType_ = 'application/vnd.comicbook+zip';
         break;

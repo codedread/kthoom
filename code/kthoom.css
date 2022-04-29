@@ -10,11 +10,12 @@
 }
 
 body {
+  animation: fadeIn ease 1.5s;
 	background: #444;
 	color: white;
 	font-family: sans-serif;
 	margin: 0px;
-  animation: fadeIn ease 1.5s;
+  scroll-behavior: smooth;
 }
 
 @keyframes fadeIn {
@@ -402,6 +403,10 @@ button:focus {
   color: #444;
 }
 
+#readingStackButton.hidden {
+  visibility: hidden;
+}
+
 #readingStackButton:hover:not([disabled]), #readingStackButton:focus {
   background-color: #444;
   color: yellow;
@@ -453,14 +458,18 @@ button:focus {
 
 /** Metadata Viewer */
 #metadataViewer {
-  margin-left: calc(41em - 30px);
-  left: calc(100% - 41em - 5px);
+  margin-left: calc(31em - 25px);
+  left: calc(100% - 31em - 5px);
 }
 
 #metadataViewerButton {
   border-radius: 5px 0 0 5px;
   border-right: none;
   margin-right: -1px;
+}
+
+#metadataViewerButton.hidden {
+  visibility: hidden;
 }
 
 #metadataTrayContents {

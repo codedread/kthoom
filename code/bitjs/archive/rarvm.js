@@ -57,7 +57,7 @@ function InitCRC() {
 /**
  * @param {number} startCRC
  * @param {Uint8Array} arr
- * @return {number}
+ * @returns {number}
  */
 function CRC(startCRC, arr) {
   if (CRCTab[1] == 0) {
@@ -204,7 +204,7 @@ const VM_OpType = {
  * variables that use the above enums.
  * @param {Object} obj
  * @param {number} val
- * @return {string} The key/enum value as a string.
+ * @returns {string} The key/enum value as a string.
  */
 function findKeyForValue(obj, val) {
   for (let key in obj) {
@@ -248,7 +248,7 @@ class VM_PreparedOperand {
     this.Addr = null;
   };
 
-  /** @return {string} */
+  /** @returns {string} */
   toString() {
     if (this.Type === null) {
       return 'Error: Type was null in VM_PreparedOperand';
@@ -278,7 +278,7 @@ class VM_PreparedCommand {
     this.Op2 = new VM_PreparedOperand();
   }
 
-  /** @return {string} */
+  /** @returns {string} */
   toString(indent) {
     if (this.OpCode === null) {
       return 'Error: OpCode was null in VM_PreparedCommand';
@@ -319,7 +319,7 @@ class VM_PreparedProgram {
     this.FilteredData = null;
   }
 
-  /** @return {string} */
+  /** @returns {string} */
   toString() {
     let s = '{\n  Cmd: [\n';
     for (let i = 0; i < this.Cmd.length; ++i) {
@@ -471,7 +471,7 @@ class RarVM {
 
   /**
    * @param {Uint8Array} code
-   * @return {VM_StandardFilters}
+   * @returns {VM_StandardFilters}
    */
   isStandardFilter(code) {
     const codeCRC = (CRC(0xffffffff, code, code.length) ^ 0xffffffff) >>> 0;
@@ -574,7 +574,7 @@ class RarVM {
 
   /**
    * @param {Array<VM_PreparedCommand>} preparedCodes
-   * @return {boolean}
+   * @returns {boolean}
    */
   executeCode(preparedCodes) {
     let codeIndex = 0;
@@ -971,7 +971,7 @@ class RarVM {
    * Static function that reads in the next set of bits for the VM
    * (might return 4, 8, 16 or 32 bits).
    * @param {bitjs.io.BitStream} bstream A RTL bit stream.
-   * @return {number} The value of the bits read.
+   * @returns {number} The value of the bits read.
    */
   static readData(bstream) {
     // Read in the first 2 bits.

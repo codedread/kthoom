@@ -42,7 +42,7 @@ export class FileRef {
 
   /**
    * @param {Window} win
-   * @return {Blob}
+   * @returns {Blob}
    */
   getBlob(win) {
     this.initializeBlob_(win);
@@ -51,7 +51,7 @@ export class FileRef {
 
   /**
    * @param {Window} win 
-   * @return {string}
+   * @returns {string}
    */
   getBlobURL(win) {
     this.initializeBlob_(win);
