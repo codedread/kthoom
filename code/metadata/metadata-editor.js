@@ -19,21 +19,16 @@ const METADATA_STATUS_ID = 'metadataStatus';
 const REFRESH_TIMER_MS = 200;
 const STATUS_TIMER_MS = 5000;
 
-const COMICVINE_URL = 'https://us-central1-api-project-652854531961.cloudfunctions.net/function-proxy-request';
-
 /**
  * A UI component that manages a table of cells to update metadata.
  */
 export class MetadataEditor {
-  /**
-   * @param {Book} book 
-   */
+  /** @type {Book} */
+  #book;
+
+  /** @param {Book} book */
   constructor(book) {
-    /**
-     * @private
-     * @type {Book}
-     */
-    this.book_ = book;
+    this.#book = book;
 
     /**
      * This is the editor's copy of the metadata.
@@ -82,13 +77,13 @@ export class MetadataEditor {
 
     // If the metadata is edited, confirm the user wants to abandon changes before allowing closing.
     let allowClose = true;
-    if (!this.editorMetadata_.equals(this.book_.getMetadata())) {
+    if (!this.editorMetadata_.equals(this.#book.getMetadata())) {
       allowClose = confirm(`Abandon metadata changes?`)
     }
 
     // If we are allowed to close, abandon all metadata changes and remove idle timer.
     if (allowClose) {
-      this.editorMetadata_ = this.book_.getMetadata().clone();
+      this.editorMetadata_ = this.#book.getMetadata().clone();
       if (this.idleTimer_) {
         clearInterval(this.idleTimer_);
       }
@@ -182,7 +177,7 @@ export class MetadataEditor {
 
   /** @private */
   async doSave_() {
-    let fileHandle = this.book_.getFileSystemHandle();
+    let fileHandle = this.#book.getFileSystemHandle();
     if (!fileHandle) {
       // Ask the user where to save. Only allow saving as cbz.
       fileHandle = await window['showSaveFilePicker']({
@@ -207,7 +202,7 @@ export class MetadataEditor {
     }
 
     // After this point, the user has given permission to save.
-    this.book_.setMetadata(this.editorMetadata_);
+    this.#book.setMetadata(this.editorMetadata_);
 
     const statusEl = getElem(METADATA_STATUS_ID);
     statusEl.innerHTML = 'Zipping... please wait...';
@@ -225,8 +220,8 @@ export class MetadataEditor {
       fileData: new TextEncoder().encode(comicInfoXml),
     });
 
-    for (let i = 0, L = this.book_.getNumberOfPages(); i < L; ++i) {
-      const page = this.book_.getPage(i);
+    for (let i = 0, L = this.#book.getNumberOfPages(); i < L; ++i) {
+      const page = this.#book.getPage(i);
       fileInfos.push({
         fileName: page.getPageName(),
         lastModTime: page.getLastModTime(),
@@ -255,7 +250,7 @@ export class MetadataEditor {
 
     import('./metadata-search.js').then(module => {
       getElem('searchMetadataButton').style.display = 'none';
-      this.searcher_ = new module.MetadataSearch(this.book_);
+      this.searcher_ = new module.MetadataSearch(this.#book);
       this.searcher_.doOpen();
       this.hideEditorButtons_();
     });
@@ -357,7 +352,7 @@ export class MetadataEditor {
       }
     }
     getElem('saveMetadataButton').style.display =
-        this.editorMetadata_.equals(this.book_.getMetadata()) ? 'none' : '';
+        this.editorMetadata_.equals(this.#book.getMetadata()) ? 'none' : '';
     const allowedKeys = this.editorMetadata_.getAllowedPropertyKeys();
     const currentKeys = this.rows_.map(row => row.select.dataset['key']);
     getElem('addRowMetadataButton').style.display =

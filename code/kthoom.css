@@ -540,11 +540,6 @@ button:focus {
   color: yellow;
 }
 
-.metadataSearchResultsTable td span.match {
-  font-weight: bold;
-  text-decoration: underline;
-}
-
 /* TODO: Remove current class and use focus for reading stack. */
 .menuItem:focus,
 .readingStackBook.current {
