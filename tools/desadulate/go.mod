@@ -12,5 +12,5 @@ require (
 	github.com/codedread/kthoom/tools/modules/archives v0.0.0-20230209055651-aa4ca20b3dce
 	github.com/codedread/kthoom/tools/modules/books v0.0.0-20230209055651-aa4ca20b3dce
 	github.com/codedread/kthoom/tools/modules/images v0.0.0-20230209055651-aa4ca20b3dce
-	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 )
