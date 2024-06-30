@@ -186,68 +186,76 @@ export class KthoomApp {
     this.viewMenu_.addEventListener(MenuEventType.ITEM_SELECTED, evt => {
       const id = evt.item.id;
       switch (id) {
-        case 'menu-view-rotate-left':
-          this.bookViewer_.rotateCounterClockwise();
-          this.saveSettings_();
-          closeMainMenu();
+        case 'menu-view-rotate-left': {
+            this.bookViewer_.rotateCounterClockwise();
+            this.saveSettings_();
+            closeMainMenu();
+          }
           break;
-        case 'menu-view-rotate-right':
-          this.bookViewer_.rotateClockwise();
-          this.saveSettings_();
-          closeMainMenu();
+        case 'menu-view-rotate-right': {
+            this.bookViewer_.rotateClockwise();
+            this.saveSettings_();
+            closeMainMenu();
+          }
           break;
-        case 'menu-view-one-page':
-          this.bookViewer_.setNumPagesInViewer(1);
-          this.viewMenu_.setMenuItemSelected('menu-view-one-page', true);
-          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
-          this.saveSettings_();
-          closeMainMenu();
+        case 'menu-view-one-page': {
+            this.bookViewer_.setNumPagesInViewer(1);
+            this.viewMenu_.setMenuItemSelected('menu-view-one-page', true);
+            this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+            this.saveSettings_();
+            closeMainMenu();
+          }
           break;
-        case 'menu-view-two-page':
-          this.bookViewer_.setNumPagesInViewer(2);
-          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-two-page', true);
-          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
-          this.saveSettings_();
-          closeMainMenu();
+        case 'menu-view-two-page': {
+            this.bookViewer_.setNumPagesInViewer(2);
+            this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-two-page', true);
+            this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+            this.saveSettings_();
+            closeMainMenu();
+          }
           break;
-        case 'menu-view-long-strip':
-          this.bookViewer_.setNumPagesInViewer(3);
-          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', true);
-          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
-          this.saveSettings_();
-          closeMainMenu();
+        case 'menu-view-long-strip': {
+            this.bookViewer_.setNumPagesInViewer(3);
+            this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-long-strip', true);
+            this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', false);
+            this.saveSettings_();
+            closeMainMenu();
+          }
           break;
-        case 'menu-view-wide-strip':
-          this.bookViewer_.setNumPagesInViewer(4);
-          this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
-          this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', true);
-          this.saveSettings_();
-          closeMainMenu();
+        case 'menu-view-wide-strip': {
+            this.bookViewer_.setNumPagesInViewer(4);
+            this.viewMenu_.setMenuItemSelected('menu-view-one-page', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-two-page', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-long-strip', false);
+            this.viewMenu_.setMenuItemSelected('menu-view-wide-strip', true);
+            this.saveSettings_();
+            closeMainMenu();
+          }
           break;
-        case HIDE_PANEL_BUTTONS_MENU_ITEM:
-          this.#togglePanelButtons();
-          closeMainMenu();
+        case HIDE_PANEL_BUTTONS_MENU_ITEM: {
+            this.#togglePanelButtons();
+            closeMainMenu();
+          }
           break;
         case 'menu-view-fit-best':
         case 'menu-view-fit-height':
-        case 'menu-view-fit-width':
-          const fitMode = (id === 'menu-view-fit-best' ? FitMode.Best :
-            id === 'menu-view-fit-height' ? FitMode.Height :
-              id === 'menu-view-fit-width' ? FitMode.Width : undefined);
-          this.bookViewer_.setFitMode(fitMode);
-          this.viewMenu_.setMenuItemSelected('menu-view-fit-best', fitMode === FitMode.Best);
-          this.viewMenu_.setMenuItemSelected('menu-view-fit-height', fitMode === FitMode.Height);
-          this.viewMenu_.setMenuItemSelected('menu-view-fit-width', fitMode === FitMode.Width);
-          this.saveSettings_();
-          closeMainMenu();
+        case 'menu-view-fit-width': {
+            const fitMode = (id === 'menu-view-fit-best' ? FitMode.Best :
+              id === 'menu-view-fit-height' ? FitMode.Height :
+                id === 'menu-view-fit-width' ? FitMode.Width : undefined);
+            this.bookViewer_.setFitMode(fitMode);
+            this.viewMenu_.setMenuItemSelected('menu-view-fit-best', fitMode === FitMode.Best);
+            this.viewMenu_.setMenuItemSelected('menu-view-fit-height', fitMode === FitMode.Height);
+            this.viewMenu_.setMenuItemSelected('menu-view-fit-width', fitMode === FitMode.Width);
+            this.saveSettings_();
+            closeMainMenu();
+          }
           break;
       }
     });
