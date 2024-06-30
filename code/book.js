@@ -163,8 +163,8 @@ export class Book extends EventTarget {
    */
   appendBytes(appendBuffer) {
     let newBuffer = new Uint8Array(this.#arrayBuffer.byteLength + appendBuffer.byteLength);
-    newBuffer.set(this.#arrayBuffer, 0);
-    newBuffer.set(appendBuffer, this.#arrayBuffer.byteLength);
+    newBuffer.set(new Uint8Array(this.#arrayBuffer), 0);
+    newBuffer.set(new Uint8Array(appendBuffer), this.#arrayBuffer.byteLength);
     this.#arrayBuffer = newBuffer;
   }
 
