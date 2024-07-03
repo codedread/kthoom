@@ -329,6 +329,12 @@ export class Book extends EventTarget {
       const reader = response.body.getReader();
       const readAndProcessNextChunk = () => {
         reader.read().then(({ done, value }) => {
+          if (Params['debugFetch']) {
+            let str = `debugFetch: readAndProcessNextChunk(), `;
+            if (done) { str += 'done'; }
+            else { str += `buffer.byteLength=${value.buffer.byteLength}`; }
+            console.log(str);
+          }
           if (!done) {
             // value is a chunk of the file as a Uint8Array.
             if (!this.#bookBinder) {
@@ -489,6 +495,9 @@ export class Book extends EventTarget {
   #startBookBinding(fileNameOrUri, ab, totalExpectedSize) {
     this.#arrayBuffer = ab;
     return createBookBinderAsync(fileNameOrUri, ab, totalExpectedSize).then(bookBinder => {
+      if (Params['debugFetch']) {
+        console.log(`debugFetch: Book Binder created`);
+      }
       this.#bookBinder = bookBinder;
       this.#bookMetadata = createEmptyMetadata(bookBinder.getBookType());
 
@@ -506,6 +515,9 @@ export class Book extends EventTarget {
       });
 
       this.#bookBinder.addEventListener(BookEventType.PAGE_EXTRACTED, evt => {
+        if (Params['debugFetch']) {
+          console.log(`debugFetch: Page #${this.#pages.length+1} extracted`);
+        }
         this.#pages.push(evt.page);
         this.dispatchEvent(new BookPageExtractedEvent(this, evt.page, evt.pageNum));
       });

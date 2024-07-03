@@ -18,9 +18,11 @@ let implPort;
 let module;
 
 onmessage = async (evt) => {
+  console.log(`debugFetch: Got a message inside webworker-wrapper with implSrc: ${evt.data.implSrc}`);
   if (evt.data.implSrc) {
     module = await import(evt.data.implSrc);
     module.connect(evt.ports[0]);
+    postMessage({type: 'connected'});
   } else if (evt.data.disconnect) {
     module.disconnect();
   }
