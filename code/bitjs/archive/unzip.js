@@ -812,17 +812,3 @@ export function disconnect() {
   totalUncompressedBytesInArchive = 0;
   totalFilesInArchive = 0;  
 }
-
-/*
-book-binder.js:172   unarchiving done in 0.292s
-comic-book-binder.js:105   number of pages = 0
-book-viewer.js:263 updateLayout() before current page is loaded
-unzip.js:773 Found an error while unzipping
-onmessage @ unzip.js:773Understand this error
-unzip.js:774 TypeError: Cannot read properties of null (reading 'postMessage')
-    at archiveUnzip (https://codedread.github.io/kthoom/code/bitjs/archive/unzip.js:634:18)
-    at async MessagePort.onmessage (https://codedread.github.io/kthoom/code/bitjs/archive/unzip.js:767:7)
-unzip.js:634 Uncaught (in promise) TypeError: Cannot read properties of null (reading 'postMessage')
-    at archiveUnzip (unzip.js:634:18)
-    at async MessagePort.onmessage (unzip.js:767:7)Understand this error
-*/

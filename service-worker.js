@@ -1,22 +1,27 @@
-const CACHE_NAME = 'kthoom:v4';
+const CACHE_NAME = 'kthoom:v5';
 
 let urlsToCache = [
   '.',
+  'code/bitjs/archive/archive.js',
+  'code/bitjs/archive/common.js',
   'code/bitjs/archive/compress.js',
   'code/bitjs/archive/decompress.js',
   'code/bitjs/archive/decompress-internal.js',
+  'code/bitjs/archive/events.js',
   'code/bitjs/archive/rarvm.js',
   'code/bitjs/archive/unrar.js',
   'code/bitjs/archive/untar.js',
   'code/bitjs/archive/unzip.js',
+  'code/bitjs/archive/webworker-wrapper.js',
   'code/bitjs/archive/zip.js',
   'code/bitjs/file/sniffer.js',
   'code/bitjs/image/webp-shim/webp-shim.js',
   'code/bitjs/image/webp-shim/webp-shim-module.js',
   'code/bitjs/image/webp-shim/webp-shim-module.wasm',
-  'code/bitjs/io/bitstream-worker.js',
-  'code/bitjs/io/bytebuffer-worker.js',
-  'code/bitjs/io/bytestream-worker.js',
+  'code/bitjs/io/bitbuffer.js',
+  'code/bitjs/io/bitstream.js',
+  'code/bitjs/io/bytebuffer.js',
+  'code/bitjs/io/bytestream.js',
   'code/comics/comic-book-binder.js',
   'code/comics/comic-book-page-sorter.js',
   'code/common/helpers.js',
@@ -39,6 +44,7 @@ let urlsToCache = [
   'code/book-viewer-types.js',
   'code/book.js',
   'code/config.js',
+  'code/file-ref.js',
   'code/kthoom-google.js',
   'code/kthoom-ipfs.js',
   'code/kthoom-messages.js',
@@ -67,8 +73,10 @@ self.addEventListener('fetch', (evt) => {
   evt.respondWith(async function () {
     try {
       const networkResponse = await fetch(evt.request);
-      const cache = await caches.open(CACHE_NAME);
-      evt.waitUntil(cache.put(evt.request, networkResponse.clone()));
+      if (evt.request.method === 'GET') {
+        const cache = await caches.open(CACHE_NAME);
+        evt.waitUntil(cache.put(evt.request, networkResponse.clone()));
+      }
       return networkResponse;
     } catch (err) {
       return caches.match(evt.request);
