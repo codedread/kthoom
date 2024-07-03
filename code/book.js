@@ -12,6 +12,7 @@ import { BookEventType, BookLoadingStartedEvent, BookLoadingCompleteEvent,
          BookBindingCompleteEvent} from './book-events.js';
 import { BookMetadata, createEmptyMetadata } from './metadata/book-metadata.js';
 import { BookPumpEventType } from './book-pump.js';
+import { Params } from './common/helpers.js';
 
 /**
  * @typedef BookOrBookContainer A shared type that both Book and BookContainer implement.
