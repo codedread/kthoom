@@ -50,14 +50,14 @@ export async function getConnectedPort(implFilename) {
   return new Promise((resolve, reject) => {
     const workerScriptPath = new URL(`./webworker-wrapper.js`, import.meta.url).href;
     const worker = new Worker(workerScriptPath, { type: 'module' });
-    worker.addEventListener('connected', () => {
+    worker.onmessage = () => {
       console.log(`debugFetch: Got the connected event from the worker`);
-    });
+      resolve({
+        hostPort,
+        disconnectFn: () => worker.postMessage({ disconnect: true }),
+      });
+    };
     worker.postMessage({ implSrc: implFilename }, [implPort]);
-    resolve({
-      hostPort,
-      disconnectFn: () => worker.postMessage({ disconnect: true }),
-    });
   });
 }
 
