@@ -342,48 +342,56 @@ export class Book extends EventTarget {
       throw e;
     }
 
-    // =============================================================================================
-    // Option 1: Readable code, fetching chunk by chunk using await.
-    // const reader = response.body.getReader();
+    if (Params['fetchMode'] === 'chunkByChunk') {
+      // =============================================================================================
+      // Option 1: Readable code, fetching chunk by chunk using await.
+      const reader = response.body.getReader();
+      let numChunks = 0;
 
-    // /**
-    //  * Reads one chunk at a time.
-    //  * @returns {Promise<ArrayBuffer | null>}
-    //  */
-    // const getOneChunk = async () => {
-    //   const { done, value } = await reader.read();
-    //   if (!done) return value.buffer;
-    //   return null;
-    // };
+      /**
+       * Reads one chunk at a time.
+       * @returns {Promise<ArrayBuffer | null>}
+       */
+      const getOneChunk = async () => {
+        const { done, value } = await reader.read();
+        if (!done) {
+          numChunks++;
+          console.log(`debugFetch: Received chunk #${numChunks} of ${value.byteLength} bytes`);
+          return value.buffer;
+        }
+        return null;
+      };
 
-    // const firstChunk = await getOneChunk();
-    // if (!firstChunk) {
-    //   throw `Could not get one chunk from fetch()`;
-    // }
-    // bytesTotal = firstChunk.byteLength;
+      const firstChunk = await getOneChunk();
+      if (!firstChunk) {
+        throw `Could not get one chunk from fetch()`;
+      }
+      bytesTotal = firstChunk.byteLength;
 
-    // // Asynchronously wait for the BookBinder and its implementation to be connected.
-    // await this.#startBookBinding(this.#name, firstChunk, this.#expectedSize);
+      // Asynchronously wait for the BookBinder and its implementation to be connected.
+      await this.#startBookBinding(this.#name, firstChunk, this.#expectedSize);
+      console.log(`debugFetch: Instantiated the BookBinder`);
 
-    // // Read out all subsequent chunks.
-    // /** @type {ArrayBuffer | null} */
-    // let nextChunk;
-    // while (nextChunk = await getOneChunk()) {
-    //   bytesTotal += nextChunk.byteLength;
-    //   this.appendBytes(nextChunk);
-    //   this.#bookBinder.appendBytes(nextChunk);
-    // }
-
-    // =============================================================================================
-    // Option 2: The XHR way (grab all bytes and only then start book binding).
-    const ab = await response.arrayBuffer();
-    bytesTotal = ab.byteLength;
-    await this.#startBookBinding(this.#name, ab, this.#expectedSize);
+      // Read out all subsequent chunks.
+      /** @type {ArrayBuffer | null} */
+      let nextChunk;
+      while (nextChunk = await getOneChunk()) {
+        bytesTotal += nextChunk.byteLength;
+        this.appendBytes(nextChunk);
+        this.#bookBinder.appendBytes(nextChunk);
+      }
+    } else {
+      // =============================================================================================
+      // Option 2: The XHR way (grab all bytes and only then start book binding).
+      const ab = await response.arrayBuffer();
+      bytesTotal = ab.byteLength;
+      await this.#startBookBinding(this.#name, ab, this.#expectedSize);
+    }
   
     // Send out BookLoadingComplete event and return this book.
     this.#finishedLoading = true;
     this.dispatchEvent(new BookLoadingCompleteEvent(this));
-    if (Params['debugFetch'] === 'true') {
+    if (Params['fetchMode']) {
       console.log(`debugFetch: ArrayBuffers were total length ${bytesTotal}`);
     }
 
@@ -553,7 +561,7 @@ export class Book extends EventTarget {
     });
 
     bookBinder.addEventListener(BookEventType.PAGE_EXTRACTED, evt => {
-      if (Params['debugFetch'] === 'true') {
+      if (Params['fetchMode']) {
         console.log(`debugFetch: Page #${this.#pages.length+1} extracted`);
       }
       this.#pages.push(evt.page);
@@ -567,7 +575,7 @@ export class Book extends EventTarget {
       this.dispatchEvent(new BookProgressEvent(this, evt.totalPages, evt.message));
     });
 
-    if (Params['debugFetch'] === 'true') {
+    if (Params['fetchMode']) {
       console.log(`debugFetch: Calling BookBinder.start()`);
     }
     // Wait for its decompressing implementation to be loaded and ports connected.

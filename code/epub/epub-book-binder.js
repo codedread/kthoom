@@ -50,7 +50,7 @@ export class EPUBBookBinder extends BookBinder {
   constructor(filenameOrUri, ab, totalExpectedSize) {
     super(filenameOrUri, ab, totalExpectedSize);
 
-    if (Params['debugFetch'] === 'true') {
+    if (Params['fetchMode']) {
       console.log(`debugFetch: Constructing a EPUBBookBinder for ${filenameOrUri}`);
     }
 
@@ -85,24 +85,21 @@ export class EPUBBookBinder extends BookBinder {
 
   /** @override */
   beforeStart_() {
-    if (Params['debugFetch'] === 'true') {
-      console.log(`EPubBookBinder.beforeStart_()`);
-    }
     let firstFile = true;
     let numExtractions = 0;
     this.unarchiver.onExtract(evt => {
       numExtractions++;
       /** @type {import('../bitjs/archive/decompress.js').UnarchivedFile} */
       const theFile = evt.unarchivedFile;
-      if (Params['debugFetch'] === 'true' && this.fileMap_.has(theFile.filename)) {
+      if (this.fileMap_.has(theFile.filename)) {
         // TODO: How does it get multiple extract events for the same file?
-        console.error(`debugFetch: Received an EXTRACT event for ${theFile.filename}, but already have that file!`);
+        console.error(`TODO: Received an EXTRACT event for ${theFile.filename}, but already have that file!`);
         return;
       }
 
       // This is a new file. Add it to the map.
       this.fileMap_.set(theFile.filename, theFile.fileData);
-      if (Params['debugFetch'] === 'true') {
+      if (Params['fetchMode']) {
         console.log(`debugFetch: Extracted file ${theFile.filename} of size ${theFile.fileData.byteLength}`);
       }
 
@@ -113,7 +110,7 @@ export class EPUBBookBinder extends BookBinder {
       }
     });
     this.unarchiver.addEventListener(UnarchiveEventType.FINISH, evt => {
-      if (Params['debugFetch'] === 'true') {
+      if (Params['fetchMode']) {
         console.log(`debugFetch: Received UnarchiveEventType.FINISH event with ${numExtractions} extractions`);
       }
 

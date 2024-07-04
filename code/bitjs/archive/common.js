@@ -36,7 +36,6 @@ export async function getConnectedPort(implFilename) {
   const messageChannel = new MessageChannel();
   const hostPort = messageChannel.port1;
   const implPort = messageChannel.port2;
-  console.log(`debugFetch: Connected host to implementation with ports`);
 
   if (typeof Worker === 'undefined') {
     const implModule = await import(`${implFilename}`);
@@ -51,7 +50,6 @@ export async function getConnectedPort(implFilename) {
     const workerScriptPath = new URL(`./webworker-wrapper.js`, import.meta.url).href;
     const worker = new Worker(workerScriptPath, { type: 'module' });
     worker.onmessage = () => {
-      console.log(`debugFetch: Got the connected event from the worker`);
       resolve({
         hostPort,
         disconnectFn: () => worker.postMessage({ disconnect: true }),
