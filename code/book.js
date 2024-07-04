@@ -593,6 +593,9 @@ export class Book extends EventTarget {
       this.dispatchEvent(new BookProgressEvent(this, evt.totalPages, evt.message));
     });
 
+    if (Params['debugFetch'] === 'true') {
+      console.log(`debugFetch: Calling BookBinder.start()`);
+    }
     // Wait for its decompressing implementation to be loaded and ports connected.
     await bookBinder.start();
     this.#bookBinder = bookBinder;

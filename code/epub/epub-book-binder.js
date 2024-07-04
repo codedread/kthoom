@@ -335,7 +335,7 @@ export class EPUBBookBinder extends BookBinder {
   /** @private */
   parseOPF_() {
     assert(this.fileMap_.has(this.opfFilename_),
-      `EPUB archive file did not have a file named '${this.opfFilename_}`);
+      `EPUB archive file did not have a file named '${this.opfFilename_}'`);
 
     const lastSlash = this.opfFilename_.lastIndexOf('/');
     const rootDir = lastSlash === -1 ? '' : this.opfFilename_.substr(0, lastSlash + 1);
