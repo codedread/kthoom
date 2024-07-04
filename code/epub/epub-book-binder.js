@@ -25,7 +25,7 @@ import { HTML_NAMESPACE, XMLNS_NAMESPACE, REVERSE_NS,
          isAllowedElement, isAllowedAttr, isAllowedBlobAttr } from './epub-allowlists.js';
 import { FileRef } from '../file-ref.js';
 import { XhtmlPage } from '../page.js';
-import { assert } from '../common/helpers.js';
+import { Params, assert } from '../common/helpers.js';
 
 const ATTR_KTHOOM_URL = 'data-kthoom-url';
 const CONTAINER_FILE = 'META-INF/container.xml';
@@ -77,8 +77,12 @@ export class EPUBBookBinder extends BookBinder {
   beforeStart_() {
     let firstFile = true;
     this.unarchiver.addEventListener(UnarchiveEventType.EXTRACT, evt => {
+      /** @type {import('../bitjs/archive/decompress.js').UnarchivedFile} */
       const theFile = evt.unarchivedFile;
       this.fileMap_.set(theFile.filename, theFile.fileData);
+      if (Params['debugFetch'] === 'true') {
+        console.log(`debugFetch: Extracted file ${theFile.filename} of size ${theFile.fileData.byteLength}`);
+      }
 
       // The first file must be 'mimetype'.
       if (firstFile) {
