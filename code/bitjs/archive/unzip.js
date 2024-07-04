@@ -789,6 +789,7 @@ export function connect(port) {
 
   hostPort = port;
   port.onmessage = onmessage;
+  // TODO: kthoom change for debugging.
   console.log(`debugFetch: Connected host to unzip implementation`);
 }
 

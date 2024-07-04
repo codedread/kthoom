@@ -50,6 +50,10 @@ export class EPUBBookBinder extends BookBinder {
   constructor(filenameOrUri, ab, totalExpectedSize) {
     super(filenameOrUri, ab, totalExpectedSize);
 
+    if (Params['debugFetch'] === 'true') {
+      console.log(`debugFetch: Constructing a EPUBBookBinder for ${filenameOrUri}`);
+    }
+
     /**
      * A map of all files in the archive, keyed by its full path in the archive with the value
      * being the raw ArrayBuffer.
@@ -76,9 +80,13 @@ export class EPUBBookBinder extends BookBinder {
   /** @override */
   beforeStart_() {
     let firstFile = true;
-    this.unarchiver.addEventListener(UnarchiveEventType.EXTRACT, evt => {
+    this.unarchiver.onExtract(evt => {
       /** @type {import('../bitjs/archive/decompress.js').UnarchivedFile} */
       const theFile = evt.unarchivedFile;
+      if (Params['debugFetch'] === 'true' && this.fileMap_.has(theFile.filename)) {
+        // TODO: How does it get multiple extract events for the same file?
+        debugger;
+      }
       this.fileMap_.set(theFile.filename, theFile.fileData);
       if (Params['debugFetch'] === 'true') {
         console.log(`debugFetch: Extracted file ${theFile.filename} of size ${theFile.fileData.byteLength}`);

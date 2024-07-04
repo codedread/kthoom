@@ -22,6 +22,7 @@ onmessage = async (evt) => {
   if (evt.data.implSrc) {
     module = await import(evt.data.implSrc);
     module.connect(evt.ports[0]);
+    // TODO: kthoom change for debugging.
     postMessage('connected');
   } else if (evt.data.disconnect) {
     module.disconnect();
