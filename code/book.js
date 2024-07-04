@@ -378,8 +378,8 @@ export class Book extends EventTarget {
                 }
                 if (pendingChunks.length > 0) {
                   for (const chunk of pendingChunks) {
-                    this.#bookBinder.appendBytes(chunk);
                     this.appendBytes(chunk);
+                    this.#bookBinder.appendBytes(chunk);
                     if (Params['debugFetch'] === 'true') {
                       console.log(`debugFetch: Processed chunk of length ${chunk.byteLength}`);
                     }
@@ -395,11 +395,14 @@ export class Book extends EventTarget {
             }
 
             // Process the chunk.
-            this.#bookBinder.appendBytes(value.buffer);
             this.appendBytes(value.buffer);
+            this.#bookBinder.appendBytes(value.buffer);
             
             return readAndProcessNextChunk();
           } else {
+            if (Params['debugFetch'] === 'true') {
+              console.log(`debugFetch: Got to the end, done fetching book chunks`);
+            }
             this.#finishedLoading = true;
             this.dispatchEvent(new BookLoadingCompleteEvent(this));
             return this;
@@ -555,9 +558,6 @@ export class Book extends EventTarget {
     this.#arrayBuffer = ab;
     const bookBinder = await createBookBinderAsync(fileNameOrUri, ab, totalExpectedSize);
   
-    if (Params['debugFetch'] === 'true') {
-      console.log(`debugFetch: Book Binder created`);
-    }
     this.#bookMetadata = createEmptyMetadata(bookBinder.getBookType());
 
     // Extracts state from some BookBinder events and update the Book. Re-source some of those
