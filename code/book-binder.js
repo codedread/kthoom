@@ -220,7 +220,7 @@ export class BookBinder extends EventTarget {
  * @param {string} fileNameOrUri The filename or URI.  Must end in a file extension that can be
  *     used to guess what type of book this is.
  * @param {ArrayBuffer} ab The initial ArrayBuffer to start the unarchiving process.
- * @param {number} totalExpectedSize Thee total expected size of the archived book in bytes.
+ * @param {number} totalExpectedSize The total expected size of the archived book in bytes.
  * @returns {Promise<BookBinder>} A Promise that will resolve with a BookBinder.
  */
 export function createBookBinderAsync(fileNameOrUri, ab, totalExpectedSize) {

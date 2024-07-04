@@ -321,7 +321,7 @@ export class Book extends EventTarget {
    * Starts a fetch and progressively loads in the book.
    * @returns {Promise<Book>} A Promise that returns this book when all bytes have been fed to it.
    */
-  loadFromFetch() {
+  async loadFromFetch() {
     if (!this.#needsLoading) {
       throw 'Cannot try to load via Fetch when the Book is already loading or loaded';
     }
@@ -332,88 +332,62 @@ export class Book extends EventTarget {
     this.#needsLoading = false;
     this.dispatchEvent(new BookLoadingStartedEvent(this));
 
-    return fetch(this.#request).then(response => {
-
-      let pendingChunks = [];
-      const reader = response.body.getReader();
-      /**
-       * This function receives a chunk. On the first chunk, it starts the async process of creating
-       * a BookBinder (analyzing the bytes and loading a script to instantiate the binder). Until
-       * the binder is created, all chunks are stored in the pendingChunks array. Once the binder
-       * object is created, all pending chunks are processed in order. On the last chunk, send the
-       * BookLoadingComplete event.
-       * @returns {Promise<Book>}
-       */
-      const readAndProcessNextChunk = () => {
-        reader.read().then(({ done, value }) => {
-          if (Params['debugFetch'] === 'true') {
-            let str = `debugFetch: readAndProcessNextChunk(), `;
-            if (done) { str += 'done'; }
-            else { str += `buffer.byteLength=${value.buffer.byteLength}`; }
-            console.log(str);
-          }
-          if (!done) {
-            // value is a chunk of the file as a Uint8Array.
-            if (!this.#bookBinder) {
-              // It is possible for #startBookBinding() to not set #bookBinder immediately because
-              // the binder script or the unarchiving script needs to load and be connected.
-              if (this.#startedBinding) {
-                if (Params['debugFetch'] === 'true') {
-                  console.log(`debugFetch: Found a pending chunk of length ${value.buffer.byteLength}`);
-                }
-                pendingChunks.push(value.buffer);
-                return readAndProcessNextChunk();
-              }
-              if (Params['debugFetch'] === 'true') {
-                console.log(`debugFetch: Got first chunk of length ${value.buffer.byteLength}`);
-              }
-              // Else if binding has not started, start the book binding process (asynchronously).
-              return this.#startBookBinding(this.#name, value.buffer, this.#expectedSize).then(() => {
-                if (!this.#bookBinder) {
-                  throw `bookBinder was not set after startBookBinding()`;
-                }
-                // After this point, #bookBinder is set.
-                if (Params['debugFetch'] === 'true') {
-                  console.log(`debugFetch: Book Binder created`);
-                }
-                if (pendingChunks.length > 0) {
-                  for (const chunk of pendingChunks) {
-                    this.appendBytes(chunk);
-                    this.#bookBinder.appendBytes(chunk);
-                    if (Params['debugFetch'] === 'true') {
-                      console.log(`debugFetch: Processed chunk of length ${chunk.byteLength}`);
-                    }
-                  }
-                  pendingChunks = [];
-                }
-                return readAndProcessNextChunk();
-              })
-            } // if (!this.#bookBinder)
-
-            if (Params['debugFetch'] === 'true') {
-              console.log(`debugFetch: Got a chunk after binding of length ${value.buffer.byteLength}`);
-            }
-
-            // Process the chunk.
-            this.appendBytes(value.buffer);
-            this.#bookBinder.appendBytes(value.buffer);
-            
-            return readAndProcessNextChunk();
-          } else {
-            if (Params['debugFetch'] === 'true') {
-              console.log(`debugFetch: Got to the end, done fetching book chunks`);
-            }
-            this.#finishedLoading = true;
-            this.dispatchEvent(new BookLoadingCompleteEvent(this));
-            return this;
-          }
-        });
-      };
-      return readAndProcessNextChunk();
-    }).catch(e => {
+    /** @type {Response} */
+    let response;
+    try {
+      response = await fetch(this.#request);
+    } catch (e) {
       console.error(`Error from fetch: ${e}`);
       throw e;
-    });
+    }
+
+    // =============================================================================================
+    // Option 1: Readable code, fetching chunk by chunk using await.
+    const reader = response.body.getReader();
+
+    /**
+     * Reads one chunk at a time.
+     * @returns {Promise<ArrayBuffer | null>}
+     */
+    const getOneChunk = async () => {
+      const { done, value } = await reader.read();
+      if (!done) return value.buffer;
+      return null;
+    };
+
+    const firstChunk = await getOneChunk();
+    if (!firstChunk) {
+      throw `Could not get one chunk from fetch()`;
+    }
+    let bytesTotal = firstChunk.byteLength;
+
+    // Asynchronously wait for the BookBinder and its implementation to be connected.
+    await this.#startBookBinding(this.#name, firstChunk, this.#expectedSize);
+
+    // Read out all subsequent chunks.
+    /** @type {ArrayBuffer | null} */
+    let nextChunk;
+    while (nextChunk = await getOneChunk()) {
+      bytesTotal += nextChunk.byteLength;
+      this.appendBytes(nextChunk);
+      this.#bookBinder.appendBytes(nextChunk);
+    }
+
+
+    // =============================================================================================
+    // Option 2: The XHR way (grab all bytes and only then start book binding).
+    // const ab = await response.arrayBuffer();
+    // bytesTotal = ab.byteLength;
+    // await this.#startBookBinding(this.#name, ab, this.#expectedSize);
+  
+    // Send out BookLoadingComplete event and return this book.
+    this.#finishedLoading = true;
+    this.dispatchEvent(new BookLoadingCompleteEvent(this));
+    if (Params['debugFetch'] === 'true') {
+      console.log(`debugFetch: ArrayBuffers were total length ${bytesTotal}`);
+    }
+
+    return this;
   }
 
   /**

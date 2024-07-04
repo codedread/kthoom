@@ -57,36 +57,50 @@ export class EPUBBookBinder extends BookBinder {
     /**
      * A map of all files in the archive, keyed by its full path in the archive with the value
      * being the raw ArrayBuffer.
-     * @private {Map<string, Uint8Array>}
+     * @type {Map<string, Uint8Array>}
+     * @private
      */
     this.fileMap_ = new Map();
 
-    /** @private {string} */
+    /**
+     * @type {string}
+     * @private
+     */
     this.opfFilename_ = undefined;
 
     /**
      * Maps the id of each manifest item to its file reference.
-     * @private {Map<string, FileRef>}
+     * @type {Map<string, FileRef>}
+     * @private
      */
     this.manifestFileMap_ = new Map();
 
     /**
      * The ordered list of reading items.
-     * @private {Array<FileRef>}
+     * @type {Array<FileRef>}
+     * @private
      */
     this.spineRefs_ = [];
   }
 
   /** @override */
   beforeStart_() {
+    if (Params['debugFetch'] === 'true') {
+      console.log(`EPubBookBinder.beforeStart_()`);
+    }
     let firstFile = true;
+    let numExtractions = 0;
     this.unarchiver.onExtract(evt => {
+      numExtractions++;
       /** @type {import('../bitjs/archive/decompress.js').UnarchivedFile} */
       const theFile = evt.unarchivedFile;
       if (Params['debugFetch'] === 'true' && this.fileMap_.has(theFile.filename)) {
         // TODO: How does it get multiple extract events for the same file?
-        debugger;
+        console.error(`debugFetch: Received an EXTRACT event for ${theFile.filename}, but already have that file!`);
+        return;
       }
+
+      // This is a new file. Add it to the map.
       this.fileMap_.set(theFile.filename, theFile.fileData);
       if (Params['debugFetch'] === 'true') {
         console.log(`debugFetch: Extracted file ${theFile.filename} of size ${theFile.fileData.byteLength}`);
@@ -99,6 +113,10 @@ export class EPUBBookBinder extends BookBinder {
       }
     });
     this.unarchiver.addEventListener(UnarchiveEventType.FINISH, evt => {
+      if (Params['debugFetch'] === 'true') {
+        console.log(`debugFetch: Received UnarchiveEventType.FINISH event with ${numExtractions} extractions`);
+      }
+
       this.setUnarchiveComplete();
       this.dispatchEvent(new BookProgressEvent(this));
       this.parseContainer_();
