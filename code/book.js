@@ -172,7 +172,7 @@ export class Book extends EventTarget {
     let newBuffer = new Uint8Array(this.#arrayBuffer.byteLength + appendBuffer.byteLength);
     newBuffer.set(new Uint8Array(this.#arrayBuffer), 0);
     newBuffer.set(new Uint8Array(appendBuffer), this.#arrayBuffer.byteLength);
-    this.#arrayBuffer = newBuffer;
+    this.#arrayBuffer = newBuffer.buffer;
   }
 
   /** @returns {Promise<ArrayBuffer>} */
@@ -555,7 +555,12 @@ export class Book extends EventTarget {
       throw `Called startBookBinding() when we already started binding!`;
     }
     this.#startedBinding = true;
-    this.#arrayBuffer = ab;
+
+    // We have to take a copy, because the original ArrayBuffer may be transferred into a Worker.
+    const copiedArr = new Uint8Array(new ArrayBuffer(ab.byteLength));
+    copiedArr.set(new Uint8Array(ab));
+    this.#arrayBuffer = copiedArr.buffer;
+
     const bookBinder = await createBookBinderAsync(fileNameOrUri, ab, totalExpectedSize);
   
     this.#bookMetadata = createEmptyMetadata(bookBinder.getBookType());
