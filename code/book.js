@@ -359,13 +359,13 @@ export class Book extends EventTarget {
               // the binder script or the unarchiving script needs to load and be connected.
               if (this.#startedBinding) {
                 if (Params['debugFetch'] === 'true') {
-                  console.log(`Found a pending chunk of length ${value.buffer.byteLength}`);
+                  console.log(`debugFetch: Found a pending chunk of length ${value.buffer.byteLength}`);
                 }
                 pendingChunks.push(value.buffer);
                 return readAndProcessNextChunk();
               }
               if (Params['debugFetch'] === 'true') {
-                console.log(`Got first chunk of length ${value.buffer.byteLength}`);
+                console.log(`debugFetch: Got first chunk of length ${value.buffer.byteLength}`);
               }
               // Else if binding has not started, start the book binding process (asynchronously).
               return this.#startBookBinding(this.#name, value.buffer, this.#expectedSize).then(() => {
@@ -374,14 +374,14 @@ export class Book extends EventTarget {
                 }
                 // After this point, #bookBinder is set.
                 if (Params['debugFetch'] === 'true') {
-                  console.log(`Book Binder created`);
+                  console.log(`debugFetch: Book Binder created`);
                 }
                 if (pendingChunks.length > 0) {
                   for (const chunk of pendingChunks) {
                     this.#bookBinder.appendBytes(chunk);
                     this.appendBytes(chunk);
                     if (Params['debugFetch'] === 'true') {
-                      console.log(`Processed chunk of length ${chunk.byteLength}`);
+                      console.log(`debugFetch: Processed chunk of length ${chunk.byteLength}`);
                     }
                   }
                   pendingChunks = [];
