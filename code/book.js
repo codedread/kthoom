@@ -5,7 +5,7 @@
  *
  * Copyright(c) 2018 Google Inc.
  */
-import { createBookBinderAsync } from './book-binder.js';
+import { BookBinder, createBookBinderAsync } from './book-binder.js';
 import { BookEventType, BookLoadingStartedEvent, BookLoadingCompleteEvent,
          BookProgressEvent, 
          BookPageExtractedEvent,
@@ -114,11 +114,17 @@ export class Book extends EventTarget {
   /** @type {boolean} */
   #finishedLoading = false;
 
-  /** @type {boolean} */
+  /**
+   * True if this book has not started loading. False otherwise.
+   * @type {boolean}
+   */
   #needsLoading = true;
 
   /** @type {Array<Page>} */
   #pages = [];
+
+  /** @type {boolean} */
+  #startedBinding = false;
 
   /**
    * The total known number of pages.
@@ -327,7 +333,17 @@ export class Book extends EventTarget {
     this.dispatchEvent(new BookLoadingStartedEvent(this));
 
     return fetch(this.#request).then(response => {
+
+      let pendingChunks = [];
       const reader = response.body.getReader();
+      /**
+       * This function receives a chunk. On the first chunk, it starts the async process of creating
+       * a BookBinder (analyzing the bytes and loading a script to instantiate the binder). Until
+       * the binder is created, all chunks are stored in the pendingChunks array. Once the binder
+       * object is created, all pending chunks are processed in order. On the last chunk, send the
+       * BookLoadingComplete event.
+       * @returns {Promise<Book>}
+       */
       const readAndProcessNextChunk = () => {
         reader.read().then(({ done, value }) => {
           if (Params['debugFetch'] === 'true') {
@@ -339,12 +355,49 @@ export class Book extends EventTarget {
           if (!done) {
             // value is a chunk of the file as a Uint8Array.
             if (!this.#bookBinder) {
+              // It is possible for #startBookBinding() to not set #bookBinder immediately because
+              // the binder script or the unarchiving script needs to load and be connected.
+              if (this.#startedBinding) {
+                if (Params['debugFetch'] === 'true') {
+                  console.log(`Found a pending chunk of length ${value.buffer.byteLength}`);
+                }
+                pendingChunks.push(value.buffer);
+                return readAndProcessNextChunk();
+              }
+              if (Params['debugFetch'] === 'true') {
+                console.log(`Got first chunk of length ${value.buffer.byteLength}`);
+              }
+              // Else if binding has not started, start the book binding process (asynchronously).
               return this.#startBookBinding(this.#name, value.buffer, this.#expectedSize).then(() => {
+                if (!this.#bookBinder) {
+                  throw `bookBinder was not set after startBookBinding()`;
+                }
+                // After this point, #bookBinder is set.
+                if (Params['debugFetch'] === 'true') {
+                  console.log(`Book Binder created`);
+                }
+                if (pendingChunks.length > 0) {
+                  for (const chunk of pendingChunks) {
+                    this.#bookBinder.appendBytes(chunk);
+                    this.appendBytes(chunk);
+                    if (Params['debugFetch'] === 'true') {
+                      console.log(`Processed chunk of length ${chunk.byteLength}`);
+                    }
+                  }
+                  pendingChunks = [];
+                }
                 return readAndProcessNextChunk();
               })
+            } // if (!this.#bookBinder)
+
+            if (Params['debugFetch'] === 'true') {
+              console.log(`debugFetch: Got a chunk after binding of length ${value.buffer.byteLength}`);
             }
+
+            // Process the chunk.
             this.#bookBinder.appendBytes(value.buffer);
             this.appendBytes(value.buffer);
+            
             return readAndProcessNextChunk();
           } else {
             this.#finishedLoading = true;
@@ -486,51 +539,58 @@ export class Book extends EventTarget {
 
   /**
    * Creates and sets the BookBinder, subscribes to its events, and starts the book binding process.
-   * This function is called by all loadFromXXX methods.
+   * This function is called by all loadFromXXX methods. It consumes the ArrayBuffer (which might be
+   * only its first chunk of bytes).
    * @param {string} fileNameOrUri
    * @param {ArrayBuffer} ab Starting buffer of bytes. May be complete or may be partial depending
    *                         on which loadFrom... method was called.
    * @param {number} totalExpectedSize
    * @returns {Promise<BookBinder>}
    */
-  #startBookBinding(fileNameOrUri, ab, totalExpectedSize) {
+  async #startBookBinding(fileNameOrUri, ab, totalExpectedSize) {
+    if (this.#startedBinding) {
+      throw `Called startBookBinding() when we already started binding!`;
+    }
+    this.#startedBinding = true;
     this.#arrayBuffer = ab;
-    return createBookBinderAsync(fileNameOrUri, ab, totalExpectedSize).then(bookBinder => {
-      if (Params['debugFetch'] === 'true') {
-        console.log(`debugFetch: Book Binder created`);
-      }
-      this.#bookBinder = bookBinder;
-      this.#bookMetadata = createEmptyMetadata(bookBinder.getBookType());
+    const bookBinder = await createBookBinderAsync(fileNameOrUri, ab, totalExpectedSize);
+  
+    if (Params['debugFetch'] === 'true') {
+      console.log(`debugFetch: Book Binder created`);
+    }
+    this.#bookMetadata = createEmptyMetadata(bookBinder.getBookType());
 
-      // Extracts state from some BookBinder events and update the Book. Re-source some of those
-      // events, and dispatch them out to the subscribers of this Book. Only some events are
-      // propagated from the BookBinder events (those that affect the UI, essentially).
+    // Extracts state from some BookBinder events and update the Book. Re-source some of those
+    // events, and dispatch them out to the subscribers of this Book. Only some events are
+    // propagated from the BookBinder events (those that affect the UI, essentially).
 
-      this.#bookBinder.addEventListener(BookEventType.BINDING_COMPLETE, evt => {
-        this.#finishedBinding = true;
-        this.dispatchEvent(new BookBindingCompleteEvent(this));
-      });
-
-      this.#bookBinder.addEventListener(BookEventType.METADATA_XML_EXTRACTED, evt => {
-        this.#bookMetadata = evt.bookMetadata;
-      });
-
-      this.#bookBinder.addEventListener(BookEventType.PAGE_EXTRACTED, evt => {
-        if (Params['debugFetch'] === 'true') {
-          console.log(`debugFetch: Page #${this.#pages.length+1} extracted`);
-        }
-        this.#pages.push(evt.page);
-        this.dispatchEvent(new BookPageExtractedEvent(this, evt.page, evt.pageNum));
-      });
-
-      this.#bookBinder.addEventListener(BookEventType.PROGRESS, evt => {
-        if (evt.totalPages) {
-          this.#totalPages = evt.totalPages;
-        }
-        this.dispatchEvent(new BookProgressEvent(this, evt.totalPages, evt.message));
-      });
-
-      this.#bookBinder.start();
+    bookBinder.addEventListener(BookEventType.BINDING_COMPLETE, evt => {
+      this.#finishedBinding = true;
+      this.dispatchEvent(new BookBindingCompleteEvent(this));
     });
+
+    bookBinder.addEventListener(BookEventType.METADATA_XML_EXTRACTED, evt => {
+      this.#bookMetadata = evt.bookMetadata;
+    });
+
+    bookBinder.addEventListener(BookEventType.PAGE_EXTRACTED, evt => {
+      if (Params['debugFetch'] === 'true') {
+        console.log(`debugFetch: Page #${this.#pages.length+1} extracted`);
+      }
+      this.#pages.push(evt.page);
+      this.dispatchEvent(new BookPageExtractedEvent(this, evt.page, evt.pageNum));
+    });
+
+    bookBinder.addEventListener(BookEventType.PROGRESS, evt => {
+      if (evt.totalPages) {
+        this.#totalPages = evt.totalPages;
+      }
+      this.dispatchEvent(new BookProgressEvent(this, evt.totalPages, evt.message));
+    });
+
+    // Wait for its decompressing implementation to be loaded and ports connected.
+    await bookBinder.start();
+    this.#bookBinder = bookBinder;
+    return bookBinder;
   }
 }

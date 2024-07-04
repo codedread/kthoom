@@ -107,6 +107,18 @@ export class Unarchiver extends EventTarget {
   }
 
   /**
+   * Type-safe way to subscribe to an UnarchiveStartEvent. This is fired once the decompress
+   * implementation has been loaded and the message ports have been connected. It is the first
+   * event message that any decompress implementation (unzip.js, unrar.js) should send.
+   * @param {function(UnarchiveExtractEvent)} listener 
+   * @returns {Unarchiver} for chaining.
+   */
+  onStart(listener) {
+    super.addEventListener(UnarchiveEventType.START, listener);
+    return this;
+  }
+
+  /**
    * Type-safe way to subscribe to an UnarchiveExtractEvent.
    * @param {function(UnarchiveExtractEvent)} listener 
    * @returns {Unarchiver} for chaining.
@@ -209,7 +221,8 @@ export class Unarchiver extends EventTarget {
    * Starts the unarchive by connecting the ports and sending the first ArrayBuffer.
    * @returns {Promise<void>} A Promise that resolves when the decompression is complete. While the
    *     decompression is proceeding, you can send more bytes of the archive to the decompressor
-   *     using the update() method.
+   *     using the update() method. If you want to know when the decompress implementation has been
+   *     loaded and ports connected, use onStart().
    */
   async start() {
     const impl = await getConnectedPort(this.getScriptFileName());
