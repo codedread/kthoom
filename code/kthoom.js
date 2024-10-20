@@ -1088,7 +1088,7 @@ export class KthoomApp {
     const blob = new Blob([ab], {type: this.currentBook_.getMIMEType()});
     const link = document.createElement('a');
     link.href = window.URL.createObjectURL(blob);
-    const fileName = this.currentBook_.getName();
+    const fileName = this.currentBook_.getFilename();
     link.download = fileName;
     link.click();
   }

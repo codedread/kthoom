@@ -183,6 +183,20 @@ export class Book extends EventTarget {
   /** @returns {BookContainer} */
   getContainer() { return this.#bookContainer; }
 
+  /**
+   * Returns a filename based on the source of the book (request, file, url).
+   * @returns {string}
+   */
+  getFilename() {
+    if (this.#uri || this.#request) {
+      let url = this.#uri ?? this.#request.url;
+      return url.substring(url.lastIndexOf('/') + 1);
+    } else if (this.#file || this.#fileHandle) {
+      return (this.#file || this.#fileHandle).name;
+    }
+    throw 'Unknown type of book source';
+  }
+
   /** @returns {FileSystemFileHandle} */
   getFileSystemHandle() { return this.#fileHandle; }
 
