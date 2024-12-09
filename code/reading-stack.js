@@ -38,6 +38,13 @@ export class ReadingStack {
      */
     this.currentBookLoadedCallbacks_ = [];
 
+    /**
+     * Holds whether this folder is collapsed or not.
+     * @type {Map<BookContainer, boolean>}
+     * @private
+     */
+    this.folderCollapsedMap_ = new Map();
+
     getElem('readingStackButton').addEventListener('click', () => this.toggleOpen());
     getElem('readingStackOverlay').addEventListener('click', () => this.toggleOpen());
   }
@@ -129,6 +136,7 @@ export class ReadingStack {
       book.removeEventListener(BookEventType.LOADING_STARTED, this);
     }
     this.books_ = [];
+    this.folderCollapsedMap_.clear();
     this.currentBookNum_ = -1;
     this.renderStack_();
   }
@@ -286,9 +294,16 @@ export class ReadingStack {
     }
   }
 
-  /** Toggles an individual folder expanded or collapsed. */
-  toggleFolderExpandCollapse_(folderDiv) {
+  /**
+   * Toggles an individual folder expanded or collapsed. Updates the collapse
+   * map to remember which folders have been collapsed.
+   * @param {HTMLDivElement} folderDiv
+   * @param {BookContainer} folder
+   * @private
+   */
+  toggleFolderExpandCollapse_(folderDiv, folder) {
     folderDiv.classList.toggle('collapsed');
+    this.folderCollapsedMap_.set(folder, folderDiv.classList.contains('collapsed'));
   }
 
   // TODO: Do this better so that each change of state doesn't require a complete re-render?
@@ -334,7 +349,10 @@ export class ReadingStack {
               folderNameSpan.textContent = ancestor.getName();
               folderDiv.appendChild(folderNameSpan);
               const zippyButtonEl = folderDiv.querySelector('span.zippyButton');
-              zippyButtonEl.addEventListener('click', (evt) => this.toggleFolderExpandCollapse_(folderDiv));
+              zippyButtonEl.addEventListener('click', (evt) => this.toggleFolderExpandCollapse_(folderDiv, ancestor));
+              if (this.folderCollapsedMap_.get(ancestor) === true) {
+                this.toggleFolderExpandCollapse_(folderDiv, ancestor);
+              }
               curDiv.appendChild(folderDiv);
               renderedContainerMap.set(ancestor, folderDiv);
             }
