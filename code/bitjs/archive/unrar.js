@@ -14,7 +14,8 @@
 import { BitStream } from '../io/bitstream.js';
 import { ByteStream } from '../io/bytestream.js';
 import { ByteBuffer } from '../io/bytebuffer.js';
-import { RarVM, UnpackFilter, VM_GLOBALMEMADDR, VM_GLOBALMEMSIZE, VM_FIXEDGLOBALSIZE, MAXWINMASK } from './rarvm.js';
+import { RarVM, UnpackFilter, VM_GLOBALMEMADDR, VM_GLOBALMEMSIZE,
+         VM_FIXEDGLOBALSIZE, MAXWINMASK } from './rarvm.js';
 
 const UnarchiveState = {
   NOT_STARTED: 0,
@@ -509,6 +510,7 @@ function Unpack15(bstream, Solid) {
 function Unpack20(bstream, Solid) {
   const destUnpSize = rBuffer.data.length;
   let oldDistPtr = 0;
+  let Bits;
 
   if (!Solid) {
     RarReadTables20(bstream);
@@ -1343,19 +1345,20 @@ class RarLocalFile {
 function unrar_start() {
   let bstream = bytestream.tee();
   const header = new RarVolumeHeader(bstream);
-  if (header.crc == 0x6152 &&
-    header.headType == 0x72 &&
-    header.flags.value == 0x1A21 &&
-    header.headSize == 7) {
-    if (logToConsole) {
-      info('Found RAR signature');
-    }
+  if (header.crc == 0x6152 && header.headType == 0x72 && header.flags.value == 0x1A21) {
+    if (header.headSize == 7) {
+      if (logToConsole) {
+        info('Found RAR signature');
+      }
 
-    const mhead = new RarVolumeHeader(bstream);
-    if (mhead.headType != MAIN_HEAD) {
-      info('Error! RAR did not include a MAIN_HEAD header');
-    } else {
-      bytestream = bstream.tee();
+      const mhead = new RarVolumeHeader(bstream);
+      if (mhead.headType != MAIN_HEAD) {
+        info('Error! RAR did not include a MAIN_HEAD header');
+      } else {
+        bytestream = bstream.tee();
+      }
+    } else if (header.headSize === 0x107) {
+      throw 'Error! RAR5 files not supported yet. See https://github.com/codedread/bitjs/issues/25';
     }
   }
 }
