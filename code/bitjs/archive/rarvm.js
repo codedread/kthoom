@@ -336,7 +336,7 @@ class VM_PreparedProgram {
 
 /**
  */
-class UnpackFilter {
+export class UnpackFilter {
   constructor() {
     /** @type {number} */
     this.BlockStart = 0;

@@ -14,7 +14,7 @@
 import { BitStream } from '../io/bitstream.js';
 import { ByteStream } from '../io/bytestream.js';
 import { ByteBuffer } from '../io/bytebuffer.js';
-import { RarVM, VM_GLOBALMEMADDR, VM_GLOBALMEMSIZE, VM_FIXEDGLOBALSIZE, MAXWINMASK } from './rarvm.js';
+import { RarVM, UnpackFilter, VM_GLOBALMEMADDR, VM_GLOBALMEMSIZE, VM_FIXEDGLOBALSIZE, MAXWINMASK } from './rarvm.js';
 
 const UnarchiveState = {
   NOT_STARTED: 0,
