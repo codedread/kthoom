@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -45,6 +46,17 @@ var allowedExtensions = []string{
 }
 
 // TODO: Fail if inpath === outpath?
+
+func checkExecutables() {
+	var err error
+	commands := []string{"unrar", "unzip", "zip"}
+	for _, cmd := range commands {
+		_, err = exec.LookPath(cmd)
+		if err != nil {
+			log.Fatalf("Error: Cannot find executable '%s'\n", cmd)
+		}
+	}
+}
 
 func parseCommandLineFlags() {
 	flag.StringVar(&inpath, "i", "", "Base path of the input directory (required)")
@@ -152,6 +164,7 @@ func getOutWriter() io.Writer {
 func main() {
 	parseCommandLineFlags()
 	resolveFilenames()
+	checkExecutables()
 
 	if verboseMode {
 		fmt.Printf("betterize:  inpath is '%s'\n", inpath)
