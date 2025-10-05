@@ -20,6 +20,9 @@ import { ZipCompressionMethod, getConnectedPort } from './common.js';
  * @property {Uint8Array} fileData The bytes of the file.
  */
 
+/** The number of milliseconds to periodically send any pending files to the Worker. */
+const FLUSH_TIMER_MS = 50;
+
 /**
  * Data elements are packed into bytes in order of increasing bit number within the byte,
  * i.e., starting with the least-significant bit of the byte.
@@ -46,8 +49,6 @@ export const CompressStatus = {
 };
 
 // TODO: Extend EventTarget and introduce subscribe methods (onProgress, onInsert, onFinish, etc).
-// TODO: I think appendFiles() is still a good idea so that all files do not have to live in memory
-//     at once, but the API is wonky here... re-think it. Maybe something more like a builder?
 
 /**
  * A thing that zips files.
@@ -55,6 +56,21 @@ export const CompressStatus = {
  * TODO(2.0): Add semantic onXXX methods for an event-driven API. 
  */
 export class Zipper {
+  /**
+   * @type {Uint8Array}
+   * @private
+   */
+  byteArray = new Uint8Array(0);
+
+  /**
+   * The overall state of the Zipper.
+   * @type {CompressStatus}
+   * @private
+   */
+  compressStatus_ = CompressStatus.NOT_STARTED;
+  // Naming of this property preserved for compatibility with 1.2.4-.
+  get compressState() { return this.compressStatus_; }
+
   /**
    * The client-side port that sends messages to, and receives messages from the
    * decompressor implementation.
@@ -69,6 +85,28 @@ export class Zipper {
    * @private
    */
   disconnectFn_;
+
+  /**
+   * A timer that periodically flushes pending files to the Worker. Set upon start() and stopped
+   * upon the last file being compressed by the Worker.
+   * @type {Number}
+   * @private
+   */
+  flushTimer_ = 0;
+
+  /**
+   * Whether the last files have been added by the client.
+   * @type {boolean}
+   * @private
+   */
+  lastFilesReceived_ = false;
+
+  /**
+   * The pending files to be sent to the Worker.
+   * @type {FileInfo[]}
+   * @private
+   */
+  pendingFilesToSend_ = [];
 
   /**
    * @param {CompressorOptions} options
@@ -93,18 +131,6 @@ export class Zipper {
         throw `CompressionStream with deflate-raw not supported by JS runtime: ${err}`;
       }
     }
-
-    /**
-     * @type {CompressStatus}
-     * @private
-     */
-    this.compressState = CompressStatus.NOT_STARTED;
-
-    /**
-     * @type {Uint8Array}
-     * @private
-     */
-    this.byteArray = new Uint8Array(0);
   }
 
   /**
@@ -112,27 +138,42 @@ export class Zipper {
    * @param {FileInfo[]} files 
    * @param {boolean} isLastFile 
    */
-  appendFiles(files, isLastFile) {
-    if (!this.port_) {
-      throw `Port not initialized. Did you forget to call start() ?`;
+  appendFiles(files, isLastFile = false) {
+    if (this.compressStatus_ === CompressStatus.NOT_STARTED) {
+      throw `appendFiles() called, but Zipper not started.`;
     }
-    if (![CompressStatus.READY, CompressStatus.WORKING].includes(this.compressState)) {
-      throw `Zipper not in the right state: ${this.compressState}`;
-    }
+    if (this.lastFilesReceived_) throw `appendFiles() called, but last file already received.`;
 
-    this.port_.postMessage({ files, isLastFile });
+    this.lastFilesReceived_ = isLastFile;
+    this.pendingFilesToSend_.push(...files);
   }
 
   /**
-   * Send in a set of files to be compressed. Set isLastFile to true if no more files are to added
-   * at some future state. The Promise will not resolve until isLastFile is set to true either in
-   * this method or in appendFiles().
+   * Send in a set of files to be compressed. Set isLastFile to true if no more files are to be
+   * added in the future. The return Promise will not resolve until isLastFile is set to true either
+   * in this method or in an appendFiles() call.
    * @param {FileInfo[]} files
    * @param {boolean} isLastFile
-   * @returns {Promise<Uint8Array>} A Promise that will contain the entire zipped archive as an array
-   *     of bytes.
+   * @returns {Promise<Uint8Array>} A Promise that will resolve once the final file has been sent.
+   *     The Promise resolves to an array of bytes of the entire zipped archive.
    */
-  async start(files, isLastFile) {
+  async start(files = [], isLastFile = false) {
+    if (this.compressStatus_ !== CompressStatus.NOT_STARTED) {
+      throw `start() called, but Zipper already started.`;
+    }
+
+    // We optimize for the case where isLastFile=true in a start() call by posting to the Worker
+    // immediately upon async resolving below. Otherwise, we push these files into the pending set
+    // and rely on the flush timer to send them into the Worker.
+    if (!isLastFile) {
+      this.pendingFilesToSend_.push(...files);
+      this.flushTimer_ = setInterval(() => this.flushAnyPendingFiles_(), FLUSH_TIMER_MS);
+    }
+    this.compressStatus_ = CompressStatus.READY;
+    this.lastFilesReceived_ = isLastFile;
+
+    // After this point, the function goes async, so appendFiles() may run before anything else in
+    // this function.
     const impl = await getConnectedPort('./zip.js');
     this.port_ = impl.hostPort;
     this.disconnectFn_ = impl.disconnectFn;
@@ -148,17 +189,25 @@ export class Zipper {
           console.log(evt.data);
         } else {
           switch (evt.data.type) {
+            // Message sent back upon the first message the Worker receives, which may or may not
+            // have sent any files for compression, e.g. start([]).
             case 'start':
-              this.compressState = CompressStatus.WORKING;
+              this.compressStatus_ = CompressStatus.WORKING;
               break;
+            // Message sent back when the last file has been compressed by the Worker.
             case 'finish':
-              this.compressState = CompressStatus.COMPLETE;
+              if (this.flushTimer_) {
+                clearInterval(this.flushTimer_);
+                this.flushTimer_ = 0;
+              }
+              this.compressStatus_ = CompressStatus.COMPLETE;
               this.port_.close();
               this.disconnectFn_();
               this.port_ = null;
               this.disconnectFn_ = null;
               resolve(this.byteArray);
               break;
+            // Message sent back when the Worker has written some bytes to the zip file.
             case 'compress':
               this.addBytes_(evt.data.bytes);
               break;
@@ -166,8 +215,10 @@ export class Zipper {
         }
       };
 
-      this.compressState = CompressStatus.READY;
-      this.port_.postMessage({ files, isLastFile, compressionMethod: this.zipCompressionMethod});
+      // See note above about optimizing for the start(files, true) case.
+      if (isLastFile) {
+        this.port_.postMessage({ files, isLastFile, compressionMethod: this.zipCompressionMethod });
+      }
     });
   }
 
@@ -181,5 +232,28 @@ export class Zipper {
     this.byteArray = new Uint8Array(oldArray.byteLength + newBytes.byteLength);
     this.byteArray.set(oldArray);
     this.byteArray.set(newBytes, oldArray.byteLength);
+  }
+
+  /**
+   * Called internally by the async machinery to send any pending files to the Worker. This method
+   * sends at most one message to the Worker.
+   * @private
+   */
+  flushAnyPendingFiles_() {
+    if (this.compressStatus_ === CompressStatus.NOT_STARTED) {
+      throw `flushAppendFiles_() called but Zipper not started.`;
+    }
+    // If the port is not initialized or we have no pending files, just return immediately and
+    // try again on the next flush.
+    if (!this.port_ || this.pendingFilesToSend_.length === 0) return;
+
+    // Send all files to the worker. If we have received the last file, then let the Worker know.
+    this.port_.postMessage({
+      files: this.pendingFilesToSend_,
+      isLastFile: this.lastFilesReceived_,
+      compressionMethod: this.zipCompressionMethod,
+    });
+    // Release the memory from the browser's main thread.
+    this.pendingFilesToSend_ = [];
   }
 }
