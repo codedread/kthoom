@@ -33,7 +33,7 @@
   "devDependencies": {
     "c8": "^8.0.1",
     "chai": "^4.3.10",
-    "jsdom": "^22.1.0",
+    "jsdom": "^28.1.0",
     "mocha": "^10.8.2"
   },
   "scripts": {
